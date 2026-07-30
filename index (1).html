@@ -123,32 +123,6 @@ input{width:100%;padding:0.6rem 0.8rem;border-radius:8px;border:1px solid #ccc;b
   </div>
 </div>
 
-<!-- FRIENDS -->
-<div class="screen" id="friends">
-  <div class="nav">
-    <button class="back-btn" onclick="goScreen('home')">← برگشت</button>
-    <h2 style="margin:0">دوستان</h2>
-    <div style="width:60px"></div>
-  </div>
-  <div class="tab-bar">
-    <div class="tab active" id="tab-list-btn" onclick="switchTab('list')">لیست</div>
-    <div class="tab" id="tab-add-btn" onclick="switchTab('add')">افزودن</div>
-  </div>
-  <div id="tab-list">
-    <div class="card" id="friends-list">
-      <div class="empty-state">هنوز دوستی اضافه نکردی 👤<br><small>از تب «افزودن» دوست اضافه کن</small></div>
-    </div>
-  </div>
-  <div id="tab-add" style="display:none">
-    <div class="card">
-      <p>اسم دوستت رو وارد کن:</p>
-      <input type="text" id="add-name" placeholder="مثلاً: علی، sara123">
-      <button class="btn primary" onclick="addFriend()">افزودن دوست</button>
-      <div id="add-result" style="font-size:13px;color:green;display:none;text-align:center;margin-top:0.5rem">✅ اضافه شد!</div>
-    </div>
-  </div>
-</div>
-
 <!-- ONLINE -->
 <div class="screen" id="online">
   <div class="nav">
@@ -232,7 +206,6 @@ input{width:100%;padding:0.6rem 0.8rem;border-radius:8px;border:1px solid #ccc;b
 // ===== CONFIG =====
 var PEER_SERVER = 'wss://ws.peerjs.com'; // PeerJS CDN
 var userName = 'بازیکن';
-var friends = [];
 var myPeer = null;
 var conns = [];         // host: up to 2 connections (guest1, guest2). guest: exactly 1 connection (to host)
 var myRoomCode = null;
@@ -256,14 +229,11 @@ function loadSaved(){
   try{
     var savedName = localStorage.getItem('mb_username');
     if(savedName) userName = savedName;
-    var savedFriends = localStorage.getItem('mb_friends');
-    if(savedFriends) friends = JSON.parse(savedFriends);
     var savedMax = localStorage.getItem('mb_maxscore');
     if(savedMax) maxScore = parseInt(savedMax,10) || 0;
   }catch(e){}
 }
 function saveName_(){ try{ localStorage.setItem('mb_username', userName); }catch(e){} }
-function saveFriends_(){ try{ localStorage.setItem('mb_friends', JSON.stringify(friends)); }catch(e){} }
 function saveMaxScore_(){ try{ localStorage.setItem('mb_maxscore', String(maxScore)); }catch(e){} }
 function wasInstalledBefore(){ try{ return localStorage.getItem('mb_installed')==='1'; }catch(e){ return false; } }
 function markInstalled(){ try{ localStorage.setItem('mb_installed','1'); }catch(e){} }
@@ -328,7 +298,6 @@ function goScreen(id){
   if(el) el.classList.add('active');
   if(id==='home') document.getElementById('home-username').textContent='سلام، '+userName+' 👋';
   if(id==='game') document.getElementById('game-title').textContent=userName;
-  if(id==='friends') renderFriends();
 }
 
 function saveName(){
@@ -337,43 +306,6 @@ function saveName(){
   saveName_();
   document.getElementById('name-saved').style.display='block';
   setTimeout(()=>{document.getElementById('name-saved').style.display='none';goScreen('home');},1000);
-}
-
-function switchTab(t){
-  document.getElementById('tab-list-btn').classList.toggle('active',t==='list');
-  document.getElementById('tab-add-btn').classList.toggle('active',t==='add');
-  document.getElementById('tab-list').style.display=t==='list'?'block':'none';
-  document.getElementById('tab-add').style.display=t==='add'?'block':'none';
-}
-
-function addFriend(){
-  var v=document.getElementById('add-name').value.trim(); if(!v)return;
-  friends.push(v);
-  saveFriends_();
-  renderFriends();
-  document.getElementById('add-result').style.display='block';
-  document.getElementById('add-name').value='';
-  setTimeout(()=>document.getElementById('add-result').style.display='none',2000);
-  switchTab('list');
-  document.getElementById('tab-list-btn').classList.add('active');
-  document.getElementById('tab-add-btn').classList.remove('active');
-}
-
-function renderFriends(){
-  var list=document.getElementById('friends-list');
-  var bg=['#e8f0fe','#e8f5e9','#f3e8fd','#fff3e0','#fce4ec'];
-  var tc=['#1a73e8','#2e7d32','#7b1fa2','#e65100','#c2185b'];
-  if(friends.length===0){
-    list.innerHTML='<div class="empty-state">هنوز دوستی اضافه نکردی 👤<br><small>از تب «افزودن» دوست اضافه کن</small></div>';
-    return;
-  }
-  list.innerHTML='';
-  friends.forEach((name,i)=>{
-    var ci=i%5;
-    var row=document.createElement('div'); row.className='friend-row';
-    row.innerHTML='<div class="avatar" style="background:'+bg[ci]+';color:'+tc[ci]+'">'+name.substring(0,2)+'</div><div><div class="friend-name">'+name+'</div></div><span class="badge online">آنلاین</span>';
-    list.appendChild(row);
-  });
 }
 
 // ===== ONLINE =====
