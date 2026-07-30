@@ -104,7 +104,7 @@ input{width:100%;padding:0.6rem 0.8rem;border-radius:8px;border:1px solid #ccc;b
     <div style="font-size:13px;color:#aaa;margin-top:0.2rem">آماده مسابقه‌ای؟</div>
   </div>
   <button class="btn primary" onclick="goScreen('game')">🎮 بازی تکنفره</button>
-  <button class="btn primary" style="background:linear-gradient(135deg,#27ae60,#2ecc71)" onclick="goScreen('online')">🌐 بازی آنلاین (فقط تو و دوستت)</button>
+  <button class="btn primary" style="background:linear-gradient(135deg,#27ae60,#2ecc71)" onclick="goScreen('online')">🌐 بازی آنلاین (تو + ۲ نفر دیگه)</button>
   <button class="btn" onclick="goScreen('setname')">✏️ تنظیم نام</button>
   <button class="btn" onclick="goScreen('friends')">👥 دوستان</button>
 </div>
@@ -160,7 +160,7 @@ input{width:100%;padding:0.6rem 0.8rem;border-radius:8px;border:1px solid #ccc;b
   <div class="card" style="text-align:center">
     <div style="font-size:36px;margin-bottom:0.5rem">🌐</div>
     <p style="font-weight:bold;font-size:15px;color:#222">چطور بازی کنی؟</p>
-    <p style="font-size:13px">یه کد بساز و به دوستت بده — فقط شما دو نفر توی مسابقه‌اید، بدون ماشین اضافه. هرکی زودتر به امتیاز هدف برسه برنده‌ست!</p>
+    <p style="font-size:13px">یه کد بساز و به دو نفر دیگه بده — فقط شما سه نفر توی مسابقه‌اید، بدون ماشین اضافه. هرکی زودتر به امتیاز هدف برسه اون دور رو می‌بره!</p>
   </div>
   <button class="btn primary" onclick="createRoom()">➕ ساخت اتاق جدید</button>
   <div class="card">
@@ -181,13 +181,13 @@ input{width:100%;padding:0.6rem 0.8rem;border-radius:8px;border:1px solid #ccc;b
   <div class="card" style="text-align:center">
     <p style="font-size:13px;color:#666">کد اتاق:</p>
     <div class="code-box" id="room-code-display">------</div>
-    <p style="font-size:13px;color:#666">این کد رو به دوستت بفرست</p>
+    <p style="font-size:13px;color:#666">این کد رو به دو نفر دیگه بفرست</p>
     <button class="btn" onclick="copyCode()" style="margin-top:0.5rem">📋 کپی کد</button>
   </div>
-  <div class="status-box waiting" id="waiting-status">⏳ منتظر دوستت هستیم...</div>
+  <div class="status-box waiting" id="waiting-status">⏳ منتظر ۲ نفر دیگه هستیم... (۰/۲)</div>
   <div id="start-online-btn" style="display:none">
-    <div class="status-box" style="background:#e8f5e9;border-color:#c8e6c9;color:#2e7d32">✅ دوستت وصل شد! بزن شروع!</div>
-    <button class="btn primary" onclick="startOnlineGame()">🚦 شروع مسابقه!</button>
+    <div class="status-box" style="background:#e8f5e9;border-color:#c8e6c9;color:#2e7d32">✅ هر دو نفر وصل شدن! بزن شروع!</div>
+    <button class="btn primary" onclick="startOnlineGame()">🚦 شروع مسابقه سه‌نفره!</button>
   </div>
 </div>
 
@@ -231,9 +231,11 @@ var PEER_SERVER = 'wss://ws.peerjs.com'; // PeerJS CDN
 var userName = 'بازیکن';
 var friends = [];
 var myPeer = null;
-var myConn = null;
+var conns = [];         // host: up to 2 connections (guest1, guest2). guest: exactly 1 connection (to host)
 var myRoomCode = null;
 var isHost = false;
+var mySlot = 0;         // 0 = host, 1/2 = guests (assigned by host)
+var REQUIRED_GUESTS = 2; // room only starts once exactly 2 guests joined (3 players total)
 
 // ===== PERSISTENCE (localStorage) =====
 function loadSaved(){
@@ -252,16 +254,21 @@ function saveMaxScore_(){ try{ localStorage.setItem('mb_maxscore', String(maxSco
 function wasInstalledBefore(){ try{ return localStorage.getItem('mb_installed')==='1'; }catch(e){ return false; } }
 function markInstalled(){ try{ localStorage.setItem('mb_installed','1'); }catch(e){} }
 
-// online race state
-var isOnlineRace = false;   // true once two peers are connected and racing
-var oppX = 48;              // opponent's last known horizontal position
-var oppScore = 0;           // opponent's last known score
-var oppName = 'حریف';
+// online race state (up to 3 real players — no bots)
+var isOnlineRace = false;
+var othersData = {};        // { slot: {x, score} } for the two opponents (not mine)
 var WIN_SCORE = 6000;       // long race — takes a while to reach
 var finishSent = false;
-var oppFinished = false;
-var myWins = 0, oppWins = 0, matchOver = false;
+var wins = {0:0,1:0,2:0};   // round wins per slot
 var ROUNDS_TO_WIN = 2;      // best of 3
+var matchOver = false;
+
+function slotLabel(slot){
+  return slot===mySlot ? userName : 'بازیکن '+(slot+1);
+}
+function otherSlots(){
+  return [0,1,2].filter(s=>s!==mySlot);
+}
 
 // ===== INSTALL =====
 function doInstall(){
@@ -362,9 +369,11 @@ function makeCode(){
 function createRoom(){
   myRoomCode = makeCode();
   isHost = true;
-  myWins=0; oppWins=0; matchOver=false;
+  mySlot = 0;
+  conns = []; othersData = {};
+  wins = {0:0,1:0,2:0}; matchOver=false;
   document.getElementById('room-code-display').textContent = myRoomCode;
-  document.getElementById('waiting-status').textContent = '⏳ منتظر دوستت هستیم...';
+  document.getElementById('waiting-status').textContent = '⏳ منتظر ۲ نفر دیگه هستیم... (۰/۲)';
   document.getElementById('start-online-btn').style.display='none';
   goScreen('waiting-room');
   initPeer(myRoomCode);
@@ -375,7 +384,8 @@ function joinRoom(){
   if(code.length !== 6){ alert('کد ۶ رقمی وارد کن!'); return; }
   myRoomCode = code;
   isHost = false;
-  myWins=0; oppWins=0; matchOver=false;
+  conns = []; othersData = {};
+  wins = {0:0,1:0,2:0}; matchOver=false;
   goScreen('waiting-room');
   document.getElementById('room-code-display').textContent = code;
   document.getElementById('waiting-status').textContent = '🔗 در حال اتصال...';
@@ -385,14 +395,14 @@ function joinRoom(){
 function copyCode(){
   var code = document.getElementById('room-code-display').textContent;
   if(navigator.clipboard){
-    navigator.clipboard.writeText('کد بازی ماشین‌باز: '+code+'\nبیا مسابقه بدیم! فقط من و تو! '+window.location.href);
+    navigator.clipboard.writeText('کد بازی ماشین‌باز: '+code+'\nبیا مسابقه سه‌نفره بدیم! '+window.location.href);
   }
   alert('کد کپی شد: '+code+'\nبه دوستت بفرست!');
 }
 
 function leaveRoom(){
   if(myPeer){ myPeer.destroy(); myPeer=null; }
-  myConn=null; myRoomCode=null; isHost=false; isOnlineRace=false;
+  conns=[]; myRoomCode=null; isHost=false; isOnlineRace=false;
 }
 
 // PeerJS via CDN
@@ -420,12 +430,18 @@ function initPeer(roomCode){
         document.getElementById('waiting-status').textContent='⏳ منتظر دوستت هستیم...';
       });
       myPeer.on('connection', (conn)=>{
-        // Only accept ONE opponent — reject any extra connections
-        if(myConn){ conn.close(); return; }
-        myConn = conn;
+        // Only accept up to 2 opponents — reject any extra (room is full at 3 players)
+        if(conns.length>=REQUIRED_GUESTS){ conn.close(); return; }
+        conn._slot = conns.length+1; // 1 or 2
+        conns.push(conn);
         setupConn(conn);
-        document.getElementById('waiting-status').style.display='none';
-        document.getElementById('start-online-btn').style.display='block';
+        document.getElementById('waiting-status').textContent =
+          conns.length<REQUIRED_GUESTS
+            ? '⏳ منتظر ۲ نفر دیگه هستیم... ('+conns.length+'/۲)'
+            : '✅ هر دو نفر وصل شدن! بزن شروع!';
+        if(conns.length>=REQUIRED_GUESTS){
+          document.getElementById('start-online-btn').style.display='block';
+        }
       });
       myPeer.on('error', (e)=>{
         showOnlineStatus('❌ خطا: '+e.type,'error');
@@ -444,7 +460,7 @@ function connectToPeer(roomCode){
       });
       myPeer.on('open', ()=>{
         var conn = myPeer.connect('mashinbaz-'+roomCode);
-        myConn = conn;
+        conns = [conn];
         setupConn(conn);
         document.getElementById('waiting-status').textContent='🔗 در حال اتصال به اتاق...';
       });
@@ -458,21 +474,27 @@ function connectToPeer(roomCode){
   });
 }
 
+function broadcast(msg, exceptConn){
+  conns.forEach(c=>{ if(c!==exceptConn && c.open) c.send(msg); });
+}
+
 function setupConn(conn){
   conn.on('open',()=>{
-    if(!isHost){
-      document.getElementById('waiting-status').textContent='✅ وصل شدی! منتظر شروع بازی...';
+    if(isHost){
+      conn.send({type:'assign', slot: conn._slot});
+    } else {
+      document.getElementById('waiting-status').textContent='✅ وصل شدی! منتظر شروع میزبان...';
       document.getElementById('waiting-status').className='status-box';
     }
     conn.send({type:'hello', name: userName});
   });
   conn.on('data',(data)=>{
+    if(data.type==='assign'){
+      mySlot = data.slot;
+    }
     if(data.type==='hello'){
-      oppName = data.name || 'حریف';
-      if(isHost){
-        document.getElementById('waiting-status').style.display='none';
-        document.getElementById('start-online-btn').style.display='block';
-      }
+      // host learns this connection's slot; relay so the other guest knows too (not required for gameplay, kept minimal)
+      if(isHost) broadcast({type:'peerjoined', slot: conn._slot}, conn);
     }
     if(data.type==='start'){
       isOnlineRace = true;
@@ -480,23 +502,25 @@ function setupConn(conn){
       setTimeout(()=>startGame(),300);
     }
     if(data.type==='pos'){
-      oppX = data.x;
-      oppScore = data.score;
+      var slot = isHost ? conn._slot : data.slot;
+      othersData[slot] = {x:data.x, score:data.score};
+      if(isHost) broadcast({type:'pos', slot:slot, x:data.x, score:data.score}, conn);
     }
     if(data.type==='finish'){
-      oppFinished = true;
-      if(running) finishRound(false);
+      var slot = isHost ? conn._slot : data.slot;
+      if(isHost) broadcast({type:'finish', slot:slot}, conn);
+      if(running) finishRound(slot);
     }
   });
   conn.on('close',()=>{
-    alert('اتصال قطع شد!');
+    alert('اتصال یکی از بازیکن‌ها قطع شد!');
     isOnlineRace = false;
   });
 }
 
 function startOnlineGame(){
   isOnlineRace = true;
-  if(myConn) myConn.send({type:'start'});
+  broadcast({type:'start'});
   goScreen('game');
   setTimeout(()=>startGame(),300);
 }
@@ -537,22 +561,23 @@ function initWheel(){
 
 function startGame(){
   stopGame(); running=true;score=0;speed=60;px=42;leftD=rightD=upD=false;
-  finishSent=false; oppFinished=false;
+  finishSent=false;
   document.getElementById('game-result').style.display='none';
   document.getElementById('start-btn').style.display='none';
   stripePos=[10,45,80];
   var o1X=40,o2X=48,o1Y=-10,o2Y=-30;
 
-  // configure track for online 1v1 vs single-player traffic mode
+  // configure track for online 3-player race vs single-player traffic mode
   var opp2El=document.getElementById('opp2');
   var opp1El=document.getElementById('opp1');
   if(isOnlineRace){
-    opp2El.style.display='none';      // no extra cars — just the two of us
-    opp1El.textContent='🚕';
+    opp1El.textContent='🚕'; opp2El.textContent='🚓';
+    opp2El.style.display='block';
     document.getElementById('max-score-wrap').innerHTML='هدف: <b>'+WIN_SCORE+'</b>';
     var ri=document.getElementById('round-info');
     ri.style.display='block';
-    ri.textContent='دور '+(myWins+oppWins+1)+' از ۳ — امتیاز دورها: من '+myWins+' | '+oppName+' '+oppWins;
+    var totalRounds=wins[0]+wins[1]+wins[2];
+    ri.textContent='دور '+(totalRounds+1)+' از ۳ — دورهای برده‌شده: '+otherSlots().concat([mySlot]).sort().map(s=>slotLabel(s)+': '+wins[s]).join(' | ');
   } else {
     opp2El.style.display='block';
     document.getElementById('round-info').style.display='none';
@@ -580,24 +605,31 @@ function startGame(){
     ['s1','s2','s3'].forEach((id,i)=>document.getElementById(id).style.top=stripePos[i]+'%');
 
     if(isOnlineRace){
-      // send our live position + score to the one opponent
-      if(myConn && myConn.open) myConn.send({type:'pos', x:px, score:score});
-      // draw opponent based on their real reported position/progress — no traffic, no collisions
-      var oppTop = 90 - Math.max(0, Math.min(100, (oppScore/WIN_SCORE)*80));
-      document.getElementById('opp1').style.left = oppX+'%';
-      document.getElementById('opp1').style.top = oppTop+'%';
-      document.getElementById('max-score').textContent ? null : null;
+      // send our live position + score to everyone we're directly connected to
+      broadcast({type:'pos', slot:mySlot, x:px, score:score});
+      // draw the two real opponents based on their reported progress — no traffic, no collisions
+      var slots = otherSlots();
+      var elIds = ['opp1','opp2'];
+      slots.forEach((slot,i)=>{
+        var od = othersData[slot] || {x:48, score:0};
+        var top = 90 - Math.max(0, Math.min(100, (od.score/WIN_SCORE)*80));
+        var el = document.getElementById(elIds[i]);
+        el.style.left = od.x+'%';
+        el.style.top = top+'%';
+      });
       var maxWrap=document.getElementById('max-score-wrap');
-      if(maxWrap) maxWrap.innerHTML='هدف: <b>'+WIN_SCORE+'</b> | حریف: <b>'+oppScore+'</b>';
+      if(maxWrap){
+        var progressTxt = slots.map(s=>slotLabel(s)+': '+((othersData[s]&&othersData[s].score)||0)).join(' | ');
+        maxWrap.innerHTML='هدف: <b>'+WIN_SCORE+'</b> | '+progressTxt;
+      }
 
       if(score>=WIN_SCORE && !finishSent){
         finishSent=true;
-        if(myConn && myConn.open) myConn.send({type:'finish'});
-        finishRound(true);
+        broadcast({type:'finish', slot:mySlot});
+        finishRound(mySlot);
       }
     } else {
       // classic single-player: dodge random traffic
-      if(myConn && myConn.open) myConn.send({type:'pos', x:px});
       document.getElementById('max-score').textContent=maxScore;
       o1Y+=speed*0.05*boost; o2Y+=speed*0.05*boost;
       if(o1Y>110){o1Y=-15;o1X=30+Math.random()*23;} if(o2Y>110){o2Y=-20;o2X=30+Math.random()*23;}
@@ -610,15 +642,17 @@ function startGame(){
   },50);
 }
 
-function finishRound(iWon){
-  if(iWon) myWins++; else oppWins++;
-  if(myWins>=ROUNDS_TO_WIN || oppWins>=ROUNDS_TO_WIN){
+function finishRound(winnerSlot){
+  wins[winnerSlot] = (wins[winnerSlot]||0)+1;
+  var iWon = winnerSlot===mySlot;
+  if(wins[winnerSlot]>=ROUNDS_TO_WIN){
     matchOver=true;
-    var msg = myWins>oppWins ? '🏆🏆 مسابقه رو بردی! ('+myWins+'-'+oppWins+')' : '😢 مسابقه رو باختی. ('+myWins+'-'+oppWins+')';
+    var msg = iWon ? '🏆🏆 مسابقه رو بردی! ('+wins[winnerSlot]+' دور)' : '😢 '+slotLabel(winnerSlot)+' مسابقه رو برد. ('+wins[winnerSlot]+' دور)';
     endGame(msg, false);
+    wins = {0:0,1:0,2:0};
   } else {
-    var msg = iWon ? '🏁 این دور رو بردی!' : '😢 '+oppName+' این دور رو زودتر رسید.';
-    endGame(msg+' (امتیاز دورها: '+myWins+'-'+oppWins+')', true);
+    var msg = iWon ? '🏁 این دور رو بردی!' : '😢 '+slotLabel(winnerSlot)+' این دور رو زودتر رسید.';
+    endGame(msg, true);
   }
 }
 
@@ -628,9 +662,7 @@ function endGame(msg, isRoundEnd){
   document.getElementById('result-text').innerHTML=msg+' امتیاز: <b>'+score+'</b>';
   document.getElementById('start-btn').style.display='block';
   document.getElementById('start-btn').textContent = isRoundEnd ? '▶️ دور بعد' : (isOnlineRace ? '🔄 مسابقه جدید' : '🔄 دوباره');
-  if(isOnlineRace && matchOver){
-    myWins=0; oppWins=0; matchOver=false;
-  }
+  if(isOnlineRace && matchOver){ matchOver=false; }
 }
 
 function stopGame(){
