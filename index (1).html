@@ -176,6 +176,7 @@ input{width:100%;padding:0.6rem 0.8rem;border-radius:8px;border:1px solid #ccc;b
     <span id="speed-display" style="font-size:13px;font-weight:bold;color:#222">0 km/h</span>
   </div>
   <div class="round-info" id="round-info" style="display:none"></div>
+  <div class="round-info" id="level-info" style="display:none"></div>
   <div class="score-bar">
     <span class="score">امتیاز: <b id="score">0</b></span>
     <span class="score" id="max-score-wrap">رکورد: <b id="max-score">0</b></span>
@@ -231,10 +232,15 @@ function loadSaved(){
     if(savedName) userName = savedName;
     var savedMax = localStorage.getItem('mb_maxscore');
     if(savedMax) maxScore = parseInt(savedMax,10) || 0;
+    var savedXp = localStorage.getItem('mb_xp');
+    if(savedXp) xp = parseInt(savedXp,10) || 0;
+    var savedLevel = localStorage.getItem('mb_level');
+    if(savedLevel) level = parseInt(savedLevel,10) || 1;
   }catch(e){}
 }
 function saveName_(){ try{ localStorage.setItem('mb_username', userName); }catch(e){} }
 function saveMaxScore_(){ try{ localStorage.setItem('mb_maxscore', String(maxScore)); }catch(e){} }
+function saveXp_(){ try{ localStorage.setItem('mb_xp', String(xp)); localStorage.setItem('mb_level', String(level)); }catch(e){} }
 function wasInstalledBefore(){ try{ return localStorage.getItem('mb_installed')==='1'; }catch(e){ return false; } }
 function markInstalled(){ try{ localStorage.setItem('mb_installed','1'); }catch(e){} }
 
@@ -483,6 +489,7 @@ function showOnlineStatus(msg, type){
 
 // ===== GAME =====
 var gi=null,running=false,score=0,maxScore=(typeof maxScore!=='undefined'?maxScore:0)||0,speed=0,px=42,leftD=false,rightD=false,upD=false,stripePos=[10,45,80];
+var xp=(typeof xp!=='undefined'?xp:0)||0, level=(typeof level!=='undefined'?level:1)||1;
 var steerAngle=0;
 
 function initWheel(){
@@ -508,6 +515,14 @@ function initWheel(){
   wheel.onpointerup=release; wheel.onpointercancel=release; wheel.onpointerleave=release;
 }
 
+function gainXp(){
+  xp++;
+  if(xp>=13){ xp=0; level++; }
+  saveXp_();
+  var li=document.getElementById('level-info');
+  if(li) li.textContent='مرحله '+level+' — XP: '+xp+'/13';
+}
+
 function startGame(){
   stopGame(); running=true;score=0;speed=60;px=42;leftD=rightD=upD=false;
   finishSent=false;
@@ -531,7 +546,11 @@ function startGame(){
     opp2El.style.display='block';
     document.getElementById('round-info').style.display='none';
     document.getElementById('max-score-wrap').innerHTML='رکورد: <b id="max-score">'+maxScore+'</b>';
+    var li=document.getElementById('level-info');
+    li.style.display='block';
+    li.textContent='مرحله '+level+' — XP: '+xp+'/13';
   }
+  if(isOnlineRace) document.getElementById('level-info').style.display='none';
 
   var ub=document.getElementById('up-btn');
   ub.onpointerdown=()=>upD=true; ub.onpointerup=ub.onpointercancel=()=>upD=false;
@@ -581,7 +600,7 @@ function startGame(){
       // classic single-player: dodge random traffic
       document.getElementById('max-score').textContent=maxScore;
       o1Y+=speed*0.05*boost; o2Y+=speed*0.05*boost;
-      if(o1Y>110){o1Y=-15;o1X=30+Math.random()*23;} if(o2Y>110){o2Y=-20;o2X=30+Math.random()*23;}
+      if(o1Y>110){o1Y=-15;o1X=30+Math.random()*23;gainXp();} if(o2Y>110){o2Y=-20;o2X=30+Math.random()*23;gainXp();}
       document.getElementById('opp1').style.top=o1Y+'%'; document.getElementById('opp1').style.left=o1X+'%';
       document.getElementById('opp2').style.top=o2Y+'%'; document.getElementById('opp2').style.left=o2X+'%';
       saveMaxScore_();
