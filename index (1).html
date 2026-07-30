@@ -159,8 +159,12 @@ input{width:100%;padding:0.6rem 0.8rem;border-radius:8px;border:1px solid #ccc;b
   </div>
   <div class="card" style="text-align:center">
     <div style="font-size:36px;margin-bottom:0.5rem">🌐</div>
-    <p style="font-weight:bold;font-size:15px;color:#222">چطور بازی کنی؟</p>
-    <p style="font-size:13px">یه کد بساز و به دو نفر دیگه بده — فقط شما سه نفر توی مسابقه‌اید، بدون ماشین اضافه. هرکی زودتر به امتیاز هدف برسه اون دور رو می‌بره!</p>
+    <p style="font-weight:bold;font-size:15px;color:#222">چند نفره بازی کنی؟</p>
+    <div class="tab-bar">
+      <div class="tab active" id="mode2-btn" onclick="setRoomMode(2)">👥 دو نفره</div>
+      <div class="tab" id="mode3-btn" onclick="setRoomMode(3)">👥👤 سه نفره</div>
+    </div>
+    <p style="font-size:13px" id="mode-desc">یه کد بساز و به یک نفر دیگه بده — فقط شما دو نفر توی مسابقه‌اید، بدون ماشین اضافه. هرکی زودتر به امتیاز هدف برسه اون دور رو می‌بره!</p>
   </div>
   <button class="btn primary" onclick="createRoom()">➕ ساخت اتاق جدید</button>
   <div class="card">
@@ -184,10 +188,10 @@ input{width:100%;padding:0.6rem 0.8rem;border-radius:8px;border:1px solid #ccc;b
     <p style="font-size:13px;color:#666">این کد رو به دو نفر دیگه بفرست</p>
     <button class="btn" onclick="copyCode()" style="margin-top:0.5rem">📋 کپی کد</button>
   </div>
-  <div class="status-box waiting" id="waiting-status">⏳ منتظر ۲ نفر دیگه هستیم... (۰/۲)</div>
+  <div class="status-box waiting" id="waiting-status">⏳ منتظر بقیه هستیم...</div>
   <div id="start-online-btn" style="display:none">
-    <div class="status-box" style="background:#e8f5e9;border-color:#c8e6c9;color:#2e7d32">✅ هر دو نفر وصل شدن! بزن شروع!</div>
-    <button class="btn primary" onclick="startOnlineGame()">🚦 شروع مسابقه سه‌نفره!</button>
+    <div class="status-box" style="background:#e8f5e9;border-color:#c8e6c9;color:#2e7d32">✅ همه وصل شدن! بزن شروع!</div>
+    <button class="btn primary" onclick="startOnlineGame()">🚦 شروع مسابقه!</button>
   </div>
 </div>
 
@@ -235,7 +239,18 @@ var conns = [];         // host: up to 2 connections (guest1, guest2). guest: ex
 var myRoomCode = null;
 var isHost = false;
 var mySlot = 0;         // 0 = host, 1/2 = guests (assigned by host)
-var REQUIRED_GUESTS = 2; // room only starts once exactly 2 guests joined (3 players total)
+var REQUIRED_GUESTS = 1; // room only starts once this many guests joined (default: 2-player)
+var roomMode = 2;        // 2 or 3 — chosen on the online screen before creating a room
+
+function setRoomMode(n){
+  roomMode = n;
+  REQUIRED_GUESTS = n - 1;
+  document.getElementById('mode2-btn').classList.toggle('active', n===2);
+  document.getElementById('mode3-btn').classList.toggle('active', n===3);
+  document.getElementById('mode-desc').textContent = n===2
+    ? 'یه کد بساز و به یک نفر دیگه بده — فقط شما دو نفر توی مسابقه‌اید، بدون ماشین اضافه. هرکی زودتر به امتیاز هدف برسه اون دور رو می‌بره!'
+    : 'یه کد بساز و به دو نفر دیگه بده — فقط شما سه نفر توی مسابقه‌اید، بدون ماشین اضافه. هرکی زودتر به امتیاز هدف برسه اون دور رو می‌بره!';
+}
 
 // ===== PERSISTENCE (localStorage) =====
 function loadSaved(){
@@ -267,8 +282,9 @@ function slotLabel(slot){
   return slot===mySlot ? userName : 'بازیکن '+(slot+1);
 }
 function otherSlots(){
-  return [0,1,2].filter(s=>s!==mySlot);
+  return [0,1,2].slice(0,numPlayers).filter(s=>s!==mySlot);
 }
+var numPlayers = 2; // total players in this room (2 or 3), set on room creation / learned via 'assign'
 
 // ===== INSTALL =====
 function doInstall(){
@@ -370,10 +386,11 @@ function createRoom(){
   myRoomCode = makeCode();
   isHost = true;
   mySlot = 0;
+  numPlayers = REQUIRED_GUESTS + 1;
   conns = []; othersData = {};
   wins = {0:0,1:0,2:0}; matchOver=false;
   document.getElementById('room-code-display').textContent = myRoomCode;
-  document.getElementById('waiting-status').textContent = '⏳ منتظر ۲ نفر دیگه هستیم... (۰/۲)';
+  document.getElementById('waiting-status').textContent = '⏳ منتظر '+REQUIRED_GUESTS+' نفر دیگه هستیم... (۰/'+REQUIRED_GUESTS+')';
   document.getElementById('start-online-btn').style.display='none';
   goScreen('waiting-room');
   initPeer(myRoomCode);
@@ -395,7 +412,7 @@ function joinRoom(){
 function copyCode(){
   var code = document.getElementById('room-code-display').textContent;
   if(navigator.clipboard){
-    navigator.clipboard.writeText('کد بازی ماشین‌باز: '+code+'\nبیا مسابقه سه‌نفره بدیم! '+window.location.href);
+    navigator.clipboard.writeText('کد بازی ماشین‌باز: '+code+'\nبیا مسابقه بدیم! '+window.location.href);
   }
   alert('کد کپی شد: '+code+'\nبه دوستت بفرست!');
 }
@@ -437,8 +454,8 @@ function initPeer(roomCode){
         setupConn(conn);
         document.getElementById('waiting-status').textContent =
           conns.length<REQUIRED_GUESTS
-            ? '⏳ منتظر ۲ نفر دیگه هستیم... ('+conns.length+'/۲)'
-            : '✅ هر دو نفر وصل شدن! بزن شروع!';
+            ? '⏳ منتظر بقیه هستیم... ('+conns.length+'/'+REQUIRED_GUESTS+')'
+            : '✅ همه وصل شدن! بزن شروع!';
         if(conns.length>=REQUIRED_GUESTS){
           document.getElementById('start-online-btn').style.display='block';
         }
@@ -481,7 +498,7 @@ function broadcast(msg, exceptConn){
 function setupConn(conn){
   conn.on('open',()=>{
     if(isHost){
-      conn.send({type:'assign', slot: conn._slot});
+      conn.send({type:'assign', slot: conn._slot, numPlayers: numPlayers});
     } else {
       document.getElementById('waiting-status').textContent='✅ وصل شدی! منتظر شروع میزبان...';
       document.getElementById('waiting-status').className='status-box';
@@ -491,6 +508,7 @@ function setupConn(conn){
   conn.on('data',(data)=>{
     if(data.type==='assign'){
       mySlot = data.slot;
+      if(data.numPlayers) numPlayers = data.numPlayers;
     }
     if(data.type==='hello'){
       // host learns this connection's slot; relay so the other guest knows too (not required for gameplay, kept minimal)
@@ -572,7 +590,7 @@ function startGame(){
   var opp1El=document.getElementById('opp1');
   if(isOnlineRace){
     opp1El.textContent='🚕'; opp2El.textContent='🚓';
-    opp2El.style.display='block';
+    opp2El.style.display = numPlayers>=3 ? 'block' : 'none';
     document.getElementById('max-score-wrap').innerHTML='هدف: <b>'+WIN_SCORE+'</b>';
     var ri=document.getElementById('round-info');
     ri.style.display='block';
