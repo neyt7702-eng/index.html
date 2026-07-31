@@ -3,9 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="ماشین‌باز">
 <title>ماشین‌باز</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:Tahoma,sans-serif;-webkit-tap-highlight-color:transparent}
@@ -13,20 +10,6 @@ html,body{height:100%;background:#111;overflow:hidden}
 .app{max-width:420px;width:100%;margin:0 auto;background:#fff;height:100vh;overflow-y:auto;overflow-x:hidden}
 .screen{display:none;padding:1rem;min-height:100vh}
 .screen.active{display:block}
-#install-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#1a1a2e,#16213e);min-height:100vh;padding:2rem}
-#install-screen.active{display:flex}
-.install-icon{font-size:80px;margin-bottom:1rem}
-.install-title{font-size:26px;font-weight:bold;color:#fff;margin-bottom:0.3rem}
-.install-sub{font-size:14px;color:#aaa;margin-bottom:2rem}
-.install-progress{width:100%;max-width:300px;height:10px;background:#333;border-radius:10px;overflow:hidden;margin-bottom:0.5rem}
-.install-fill{height:100%;background:linear-gradient(90deg,#f39c12,#f1c40f);border-radius:10px;transition:width 0.2s}
-.install-label{font-size:13px;color:#aaa;margin-bottom:2rem}
-.install-btn{background:linear-gradient(135deg,#f39c12,#f1c40f);color:#fff;border:none;border-radius:14px;padding:1rem 3rem;font-size:18px;font-weight:bold;cursor:pointer;font-family:Tahoma,sans-serif}
-.install-btn:disabled{background:#333;color:#666;cursor:default}
-.install-done{font-size:13px;color:#4caf50;margin-top:1rem;display:none}
-.splash{position:fixed;inset:0;background:linear-gradient(135deg,#1a1a2e,#16213e);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;transition:opacity 0.5s}
-.splash-icon{font-size:80px;animation:bounce 1s infinite alternate}
-@keyframes bounce{from{transform:translateY(0)}to{transform:translateY(-12px)}}
 .card{background:#f8f8f8;border:1px solid #e0e0e0;border-radius:12px;padding:1.25rem;margin-bottom:1rem}
 .btn{display:block;width:100%;padding:0.7rem 1rem;border-radius:8px;border:1px solid #ccc;background:#f0f0f0;color:#222;font-size:15px;cursor:pointer;text-align:center;margin-bottom:0.5rem;font-family:Tahoma,sans-serif}
 .btn:active{opacity:0.8}
@@ -76,35 +59,12 @@ input{width:100%;padding:0.6rem 0.8rem;border-radius:8px;border:1px solid #ccc;b
 .car-option{font-size:32px;padding:0.6rem;border-radius:10px;border:2px solid #eee;background:#f8f8f8;cursor:pointer}
 .car-option.selected{border-color:#f39c12;background:#fff8e1}
 </style>
-<link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icon-192.png">
-<link rel="icon" href="icon-192.png" type="image/png">
-<meta name="theme-color" content="#0d0d0d">
 </head>
 <body>
 <div class="app" id="app">
 
-<!-- INSTALL -->
-<div id="install-screen" class="active">
-  <button class="back-btn" id="install-back-btn" style="display:none;position:absolute;top:1rem;right:1.2rem;color:#f1c40f" onclick="closeInstallScreen()">← برگشت</button>
-  <div class="install-icon">🏎️</div>
-  <div class="install-title">ماشین‌باز</div>
-  <div class="install-sub">بازی ماشین‌های آنلاین — نسخه ۲.۵.۰</div>
-  <div class="install-progress"><div class="install-fill" id="inst-fill" style="width:0%"></div></div>
-  <div class="install-label" id="inst-label">آماده نصب</div>
-  <button class="install-btn" id="inst-btn" onclick="doInstall()">📲 نصب</button>
-  <div class="install-done" id="inst-done">✅ نصب شد! در حال باز شدن...</div>
-</div>
-
-<!-- SPLASH -->
-<div class="splash" id="splash" style="display:none">
-  <div class="splash-icon">🚙</div>
-  <div style="color:#fff;font-size:22px;font-weight:bold;margin-top:1rem">ماشین‌باز</div>
-  <div style="color:#aaa;font-size:13px;margin-top:0.5rem">در حال بارگذاری...</div>
-</div>
-
 <!-- HOME -->
-<div class="screen" id="home">
+<div class="screen active" id="home">
   <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);border-radius:16px;padding:1.5rem;margin-bottom:1rem;text-align:center;color:#fff">
     <div style="font-size:50px">🚙</div>
     <div style="font-size:20px;font-weight:bold;margin-top:0.3rem" id="home-username">خوش اومدی!</div>
@@ -114,7 +74,6 @@ input{width:100%;padding:0.6rem 0.8rem;border-radius:8px;border:1px solid #ccc;b
   <button class="btn primary" style="background:linear-gradient(135deg,#27ae60,#2ecc71)" onclick="goScreen('online')">🌐 بازی آنلاین (تو + ۲ نفر دیگه)</button>
   <button class="btn" id="setname-btn" onclick="goScreen('setname')">✏️ تنظیم نام</button>
   <button class="btn" onclick="goScreen('carset')">🚗 تنظیم ماشین</button>
-  <button class="btn" style="background:linear-gradient(135deg,#f39c12,#f1c40f);color:#fff;border:none" onclick="showInstallScreenAgain()">📲 دانلود / نصب روی گوشی</button>
 </div>
 
 <!-- SET NAME -->
@@ -228,36 +187,6 @@ input{width:100%;padding:0.6rem 0.8rem;border-radius:8px;border:1px solid #ccc;b
 </div>
 
 <script>
-// ===== REAL install-to-home-screen support =====
-var deferredInstallPrompt = null;
-window.addEventListener('beforeinstallprompt', function(e){
-  e.preventDefault();
-  deferredInstallPrompt = e;
-  var scr = document.getElementById('install-screen');
-  if(scr && scr.classList.contains('active') && !isRunningStandalone()){
-    doInstall();
-  }
-});
-window.addEventListener('appinstalled', function(){
-  deferredInstallPrompt = null;
-});
-function isIOSDevice(){
-  return /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
-}
-function isRunningStandalone(){
-  return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
-}
-
-// register the service worker — required by Chrome/Android before it will
-// ever fire the real "beforeinstallprompt" install event
-if('serviceWorker' in navigator){
-  window.addEventListener('load', function(){
-    navigator.serviceWorker.register('sw.js').catch(function(err){
-      console.log('sw registration failed', err);
-    });
-  });
-}
-
 // ===== CONFIG =====
 var PEER_SERVER = 'wss://ws.peerjs.com'; // PeerJS CDN
 var userName = 'بازیکن';
@@ -298,8 +227,6 @@ function saveName_(){ try{ localStorage.setItem('mb_username', userName); }catch
 function saveMaxScore_(){ try{ localStorage.setItem('mb_maxscore', String(maxScore)); }catch(e){} }
 function saveXp_(){ try{ localStorage.setItem('mb_xp', String(xp)); localStorage.setItem('mb_level', String(level)); }catch(e){} }
 function saveCar_(){ try{ localStorage.setItem('mb_car', selectedCar); }catch(e){} }
-function wasInstalledBefore(){ try{ return localStorage.getItem('mb_installed')==='1'; }catch(e){ return false; } }
-function markInstalled(){ try{ localStorage.setItem('mb_installed','1'); }catch(e){} }
 
 // ===== LEVEL / XP (single-player only) =====
 var xp=(typeof xp!=='undefined'?xp:0)||0, level=(typeof level!=='undefined'?level:1)||1;
@@ -349,94 +276,9 @@ function otherSlots(){
 }
 var numPlayers = 2; // total players in this room (2 or 3), set on room creation / learned via 'assign'
 
-function closeInstallScreen(){
-  var scr=document.getElementById('install-screen');
-  scr.classList.remove('active');
-  scr.style.display='none';
-  goScreen('home');
-}
-
-function showInstallScreenAgain(){
-  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
-  var scr=document.getElementById('install-screen');
-  scr.style.display='flex'; scr.classList.add('active');
-  document.getElementById('install-back-btn').style.display='block';
-  var btn=document.getElementById('inst-btn');
-  btn.disabled=false; btn.textContent='📲 نصب';
-  document.getElementById('inst-fill').style.width='0%';
-  document.getElementById('inst-label').textContent='آماده نصب';
-  document.getElementById('inst-done').style.display='none';
-}
-
-// ===== INSTALL (real — actually adds an icon to the phone home screen) =====
-function doInstall(){
-  var btn=document.getElementById('inst-btn');
-  var label=document.getElementById('inst-label');
-  var fill=document.getElementById('inst-fill');
-
-  if(isRunningStandalone()){
-    markInstalled();
-    fill.style.width='100%';
-    label.textContent='قبلاً نصب شده';
-    document.getElementById('inst-done').style.display='block';
-    setTimeout(()=>launchApp(),600);
-    return;
-  }
-
-  if(deferredInstallPrompt){
-    btn.disabled=true; btn.textContent='در حال نصب...';
-    label.textContent='منتظر تایید نصب...';
-    deferredInstallPrompt.prompt();
-    deferredInstallPrompt.userChoice.then(function(choice){
-      btn.disabled=false; btn.textContent='📲 نصب';
-      if(choice.outcome==='accepted'){
-        fill.style.width='100%';
-        label.textContent='نصب: 100%';
-        document.getElementById('inst-done').style.display='block';
-        markInstalled();
-        setTimeout(()=>launchApp(),1000);
-      } else {
-        label.textContent='نصب لغو شد — دوباره امتحان کن';
-      }
-      deferredInstallPrompt=null;
-    });
-    return;
-  }
-
-  if(isIOSDevice()){
-    label.textContent='برای نصب: پایین صفحه دکمه Share (⬆️) رو بزن، بعد «Add to Home Screen» رو بزن';
-    return;
-  }
-
-  // Android fallback that always works, with no dependency on manifest/service-worker
-  // criteria: Chrome's own menu can always add a home-screen shortcut for any page.
-  fill.style.width='100%';
-  label.textContent='از بالای صفحه ⋮ (سه‌نقطه) رو بزن، بعد «Add to Home screen» رو بزن — همین یه آیکون میذاره روی گوشیت';
-}
-
-function launchApp(){
-  document.getElementById('install-screen').style.display='none';
-  var splash=document.getElementById('splash');
-  splash.style.display='flex';
-  setTimeout(()=>{
-    splash.style.opacity='0';
-    setTimeout(()=>{splash.style.display='none';goScreen('home');},500);
-  },1500);
-}
-
-// on load: restore saved data.
-// Skip the install screen ONLY if this load is already the installed app
-// (opened from the phone's home screen icon) or was previously marked installed.
-// Any other case (a normal browser tab) is forced to go through install first.
+// on load: restore saved data and go straight to home
 loadSaved();
-if(isRunningStandalone()){
-  markInstalled();
-}
-if(wasInstalledBefore()){
-  document.getElementById('install-screen').classList.remove('active');
-  document.getElementById('install-screen').style.display='none';
-  launchApp();
-}
+goScreen('home');
 
 function goScreen(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
