@@ -225,6 +225,22 @@ input{width:100%;padding:0.6rem 0.8rem;border-radius:8px;border:1px solid #ccc;b
 </div>
 
 <script>
+// ===== REAL install-to-home-screen support =====
+var deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', function(e){
+  e.preventDefault();
+  deferredInstallPrompt = e;
+});
+window.addEventListener('appinstalled', function(){
+  deferredInstallPrompt = null;
+});
+function isIOSDevice(){
+  return /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+}
+function isRunningStandalone(){
+  return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+}
+
 // ===== CONFIG =====
 var PEER_SERVER = 'wss://ws.peerjs.com'; // PeerJS CDN
 var userName = 'بازیکن';
@@ -316,23 +332,49 @@ function otherSlots(){
 }
 var numPlayers = 2; // total players in this room (2 or 3), set on room creation / learned via 'assign'
 
-// ===== INSTALL =====
+// ===== INSTALL (real — actually adds an icon to the phone home screen) =====
 function doInstall(){
   var btn=document.getElementById('inst-btn');
-  btn.disabled=true; btn.textContent='در حال نصب...';
-  var pct=0;
-  var iv=setInterval(()=>{
-    pct=Math.min(100,pct+Math.floor(Math.random()*8)+4);
-    document.getElementById('inst-fill').style.width=pct+'%';
-    document.getElementById('inst-label').textContent='نصب: '+pct+'%';
-    if(pct>=100){
-      clearInterval(iv);
-      btn.textContent='✅ نصب شد';
-      document.getElementById('inst-done').style.display='block';
-      markInstalled();
-      setTimeout(()=>launchApp(),1200);
-    }
-  },150);
+  var label=document.getElementById('inst-label');
+  var fill=document.getElementById('inst-fill');
+
+  if(isRunningStandalone()){
+    // already opened as an installed app — just go in
+    markInstalled();
+    fill.style.width='100%';
+    label.textContent='قبلاً نصب شده';
+    document.getElementById('inst-done').style.display='block';
+    setTimeout(()=>launchApp(),600);
+    return;
+  }
+
+  if(deferredInstallPrompt){
+    btn.disabled=true; btn.textContent='در حال نصب...';
+    label.textContent='منتظر تایید نصب...';
+    deferredInstallPrompt.prompt();
+    deferredInstallPrompt.userChoice.then(function(choice){
+      btn.disabled=false; btn.textContent='📲 نصب';
+      if(choice.outcome==='accepted'){
+        fill.style.width='100%';
+        label.textContent='نصب: 100%';
+        document.getElementById('inst-done').style.display='block';
+        markInstalled();
+        setTimeout(()=>launchApp(),1000);
+      } else {
+        label.textContent='نصب لغو شد — دوباره امتحان کن';
+      }
+      deferredInstallPrompt=null;
+    });
+    return;
+  }
+
+  if(isIOSDevice()){
+    label.textContent='برای نصب: پایین صفحه دکمه Share (⬆️) رو بزن، بعد «Add to Home Screen» رو بزن';
+    return;
+  }
+
+  // no install prompt available yet (e.g. just loaded, or not over https, or already installed via browser menu)
+  label.textContent='هنوز آماده نصب نیست — چند ثانیه صبر کن یا از منوی مرورگر «Install app / Add to Home screen» رو بزن';
 }
 
 function launchApp(){
