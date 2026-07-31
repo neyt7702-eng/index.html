@@ -369,14 +369,12 @@ function showInstallScreenAgain(){
 }
 
 // ===== INSTALL (real — actually adds an icon to the phone home screen) =====
-var waitingForPrompt = false;
 function doInstall(){
   var btn=document.getElementById('inst-btn');
   var label=document.getElementById('inst-label');
   var fill=document.getElementById('inst-fill');
 
   if(isRunningStandalone()){
-    // already opened as an installed app — just go in
     markInstalled();
     fill.style.width='100%';
     label.textContent='قبلاً نصب شده';
@@ -410,31 +408,10 @@ function doInstall(){
     return;
   }
 
-  // not ready yet — keep waiting quietly and auto-install the instant it becomes ready,
-  // instead of making the user tap again
-  if(!waitingForPrompt){
-    waitingForPrompt = true;
-    btn.disabled = true;
-    btn.textContent = '⏳ در حال آماده‌سازی...';
-    label.textContent = 'چند لحظه صبر کن، خودش نصب می‌شه...';
-    var waited = 0;
-    var poll = setInterval(function(){
-      waited += 300;
-      if(deferredInstallPrompt){
-        clearInterval(poll);
-        waitingForPrompt = false;
-        btn.disabled = false;
-        btn.textContent = '📲 نصب';
-        doInstall();
-      } else if(waited > 8000){
-        clearInterval(poll);
-        waitingForPrompt = false;
-        btn.disabled = false;
-        btn.textContent = '📲 نصب';
-        label.textContent = 'آماده نشد — از منوی مرورگر (⋮) گزینه «Install app / Add to Home screen» رو بزن';
-      }
-    }, 300);
-  }
+  // Android fallback that always works, with no dependency on manifest/service-worker
+  // criteria: Chrome's own menu can always add a home-screen shortcut for any page.
+  fill.style.width='100%';
+  label.textContent='از بالای صفحه ⋮ (سه‌نقطه) رو بزن، بعد «Add to Home screen» رو بزن — همین یه آیکون میذاره روی گوشیت';
 }
 
 function launchApp(){
