@@ -73,6 +73,8 @@ input{width:100%;padding:0.6rem 0.8rem;border-radius:8px;border:1px solid #ccc;b
 .wheel{width:96px;height:96px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#555,#111 70%);border:7px solid #222;position:relative;display:flex;align-items:center;justify-content:center;font-size:36px;color:#888;touch-action:none;cursor:grab;user-select:none}
 .wheel::before{content:'';position:absolute;top:6px;left:50%;transform:translateX(-50%);width:6px;height:16px;background:#f1c40f;border-radius:3px}
 .round-info{text-align:center;font-size:13px;color:#666;margin-bottom:0.5rem}
+.car-option{font-size:32px;padding:0.6rem;border-radius:10px;border:2px solid #eee;background:#f8f8f8;cursor:pointer}
+.car-option.selected{border-color:#f39c12;background:#fff8e1}
 </style>
 </head>
 <body>
@@ -106,6 +108,7 @@ input{width:100%;padding:0.6rem 0.8rem;border-radius:8px;border:1px solid #ccc;b
   <button class="btn primary" onclick="goScreen('game')">🎮 بازی تکنفره</button>
   <button class="btn primary" style="background:linear-gradient(135deg,#27ae60,#2ecc71)" onclick="goScreen('online')">🌐 بازی آنلاین (تو + ۲ نفر دیگه)</button>
   <button class="btn" id="setname-btn" onclick="goScreen('setname')">✏️ تنظیم نام</button>
+  <button class="btn" onclick="goScreen('carset')">🚗 تنظیم ماشین</button>
 </div>
 
 <!-- SET NAME -->
@@ -120,6 +123,21 @@ input{width:100%;padding:0.6rem 0.8rem;border-radius:8px;border:1px solid #ccc;b
     <input type="text" id="username-input" placeholder="مثلاً: علی، racer99">
     <button class="btn primary" onclick="saveName()">✅ ذخیره</button>
     <div id="name-saved" style="font-size:13px;color:green;display:none;text-align:center;margin-top:0.5rem">✅ ذخیره شد!</div>
+  </div>
+</div>
+
+<!-- SET CAR -->
+<div class="screen" id="carset">
+  <div class="nav">
+    <button class="back-btn" onclick="goScreen('home')">← برگشت</button>
+    <h2 style="margin:0">تنظیم ماشین</h2>
+    <div style="width:60px"></div>
+  </div>
+  <div class="card" style="text-align:center">
+    <div style="font-size:60px" id="car-preview">🚙</div>
+    <p style="margin-top:0.5rem">ماشینت رو انتخاب کن</p>
+  </div>
+  <div class="card" id="car-options" style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.6rem;text-align:center">
   </div>
 </div>
 
@@ -176,6 +194,7 @@ input{width:100%;padding:0.6rem 0.8rem;border-radius:8px;border:1px solid #ccc;b
     <span id="speed-display" style="font-size:13px;font-weight:bold;color:#222">0 km/h</span>
   </div>
   <div class="round-info" id="round-info" style="display:none"></div>
+  <div class="round-info" id="level-info" style="display:none"></div>
   <div class="score-bar">
     <span class="score">امتیاز: <b id="score">0</b></span>
     <span class="score" id="max-score-wrap">رکورد: <b id="max-score">0</b></span>
@@ -231,12 +250,51 @@ function loadSaved(){
     if(savedName) userName = savedName;
     var savedMax = localStorage.getItem('mb_maxscore');
     if(savedMax) maxScore = parseInt(savedMax,10) || 0;
+    var savedXp = localStorage.getItem('mb_xp');
+    if(savedXp) xp = parseInt(savedXp,10) || 0;
+    var savedLevel = localStorage.getItem('mb_level');
+    if(savedLevel) level = parseInt(savedLevel,10) || 1;
+    var savedCar = localStorage.getItem('mb_car');
+    if(savedCar) selectedCar = savedCar;
   }catch(e){}
 }
 function saveName_(){ try{ localStorage.setItem('mb_username', userName); }catch(e){} }
 function saveMaxScore_(){ try{ localStorage.setItem('mb_maxscore', String(maxScore)); }catch(e){} }
+function saveXp_(){ try{ localStorage.setItem('mb_xp', String(xp)); localStorage.setItem('mb_level', String(level)); }catch(e){} }
+function saveCar_(){ try{ localStorage.setItem('mb_car', selectedCar); }catch(e){} }
 function wasInstalledBefore(){ try{ return localStorage.getItem('mb_installed')==='1'; }catch(e){ return false; } }
 function markInstalled(){ try{ localStorage.setItem('mb_installed','1'); }catch(e){} }
+
+// ===== LEVEL / XP (single-player only) =====
+var xp=(typeof xp!=='undefined'?xp:0)||0, level=(typeof level!=='undefined'?level:1)||1;
+function gainXp(){
+  xp++;
+  if(xp>=13){ xp=0; level++; }
+  saveXp_();
+  var li=document.getElementById('level-info');
+  if(li) li.textContent='مرحله '+level+' — XP: '+xp+'/13';
+}
+
+// ===== CAR CUSTOMIZATION =====
+var CAR_OPTIONS = ['🚙','🚗','🚕','🚓','🏎️','🚐','🚚','🚑'];
+var selectedCar = (typeof selectedCar!=='undefined'?selectedCar:'🚙')||'🚙';
+function renderCarOptions(){
+  var wrap=document.getElementById('car-options');
+  wrap.innerHTML='';
+  CAR_OPTIONS.forEach(function(emoji){
+    var b=document.createElement('div');
+    b.className='car-option'+(emoji===selectedCar?' selected':'');
+    b.textContent=emoji;
+    b.onclick=function(){ selectCar(emoji); };
+    wrap.appendChild(b);
+  });
+  document.getElementById('car-preview').textContent=selectedCar;
+}
+function selectCar(emoji){
+  selectedCar=emoji;
+  saveCar_();
+  renderCarOptions();
+}
 
 // online race state (up to 3 real players — no bots)
 var isOnlineRace = false;
@@ -302,7 +360,11 @@ function goScreen(id){
     try{ hasName = !!localStorage.getItem('mb_username'); }catch(e){}
     document.getElementById('setname-btn').style.display = hasName ? 'none' : 'block';
   }
-  if(id==='game') document.getElementById('game-title').textContent=userName;
+  if(id==='game'){
+    document.getElementById('game-title').textContent=userName;
+    document.getElementById('player').textContent=selectedCar;
+  }
+  if(id==='carset') renderCarOptions();
 }
 
 function saveName(){
@@ -536,7 +598,12 @@ function startGame(){
     opp2El.style.display='block';
     document.getElementById('round-info').style.display='none';
     document.getElementById('max-score-wrap').innerHTML='رکورد: <b id="max-score">'+maxScore+'</b>';
+    var li=document.getElementById('level-info');
+    li.style.display='block';
+    li.textContent='مرحله '+level+' — XP: '+xp+'/13';
   }
+  if(isOnlineRace) document.getElementById('level-info').style.display='none';
+  document.getElementById('player').textContent = selectedCar;
 
   var ub=document.getElementById('up-btn');
   ub.onpointerdown=()=>upD=true; ub.onpointerup=ub.onpointercancel=()=>upD=false;
@@ -586,7 +653,7 @@ function startGame(){
       // classic single-player: dodge random traffic
       document.getElementById('max-score').textContent=maxScore;
       o1Y+=speed*0.05*boost; o2Y+=speed*0.05*boost;
-      if(o1Y>110){o1Y=-15;o1X=30+Math.random()*23;} if(o2Y>110){o2Y=-20;o2X=30+Math.random()*23;}
+      if(o1Y>110){o1Y=-15;o1X=30+Math.random()*23;gainXp();} if(o2Y>110){o2Y=-20;o2X=30+Math.random()*23;gainXp();}
       document.getElementById('opp1').style.top=o1Y+'%'; document.getElementById('opp1').style.left=o1X+'%';
       document.getElementById('opp2').style.top=o2Y+'%'; document.getElementById('opp2').style.left=o2X+'%';
       saveMaxScore_();
