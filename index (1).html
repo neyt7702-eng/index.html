@@ -114,7 +114,8 @@ input{width:100%;padding:0.6rem 0.8rem;border-radius:8px;border:1px solid #ccc;b
   <button class="btn primary" style="background:linear-gradient(135deg,#27ae60,#2ecc71)" onclick="goScreen('online')">🌐 بازی آنلاین (تو + ۲ نفر دیگه)</button>
   <button class="btn" id="setname-btn" onclick="goScreen('setname')">✏️ تنظیم نام</button>
   <button class="btn" onclick="goScreen('carset')">🚗 تنظیم ماشین</button>
-  <button class="btn" style="background:linear-gradient(135deg,#f39c12,#f1c40f);color:#fff;border:none" onclick="directInstall()">📲 دانلود / نصب روی گوشی</button>
+  <button class="btn" id="download-btn" style="background:linear-gradient(135deg,#f39c12,#f1c40f);color:#fff;border:none" onclick="downloadThenInstall()">📲 دانلود روی گوشی</button>
+  <button class="btn primary" id="post-install-btn" style="display:none" onclick="installNow()">✅ نصب</button>
 </div>
 
 <!-- SET NAME -->
@@ -368,8 +369,27 @@ function showInstallScreenAgain(){
   document.getElementById('inst-done').style.display='none';
 }
 
-// ===== DIRECT INSTALL (no custom screen — just triggers install right away) =====
-function directInstall(){
+// ===== STEP 1: real file download to the phone's Downloads (no popup of ours) =====
+function downloadThenInstall(){
+  try{
+    var htmlContent = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+    var blob = new Blob([htmlContent], {type:'text/html'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'mashin-baz.html';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 3000);
+  }catch(e){}
+  // once the file is in Downloads, reveal the install button
+  document.getElementById('download-btn').style.display='none';
+  document.getElementById('post-install-btn').style.display='block';
+}
+
+// ===== STEP 2: actually install as an app icon (native browser dialog — unavoidable) =====
+function installNow(){
   if(isRunningStandalone()){
     alert('قبلاً نصب شده ✅');
     return;
@@ -379,6 +399,8 @@ function directInstall(){
     deferredInstallPrompt.userChoice.then(function(choice){
       if(choice.outcome==='accepted') markInstalled();
       deferredInstallPrompt=null;
+      document.getElementById('post-install-btn').style.display='none';
+      document.getElementById('download-btn').style.display='block';
     });
     return;
   }
