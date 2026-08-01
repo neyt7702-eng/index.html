@@ -1,19 +1,12 @@
-// حداقل سرویس‌ورکر لازم برای اینکه مرورگر سایت رو "قابل نصب" تشخیص بده
-const CACHE_NAME = 'mashinbaz-v1';
-
-self.addEventListener('install', function(event) {
+// minimal service worker — its only job is to satisfy Chrome's
+// "must have a registered service worker" install requirement.
+self.addEventListener('install', function(e){
   self.skipWaiting();
 });
-
-self.addEventListener('activate', function(event) {
-  event.waitUntil(self.clients.claim());
+self.addEventListener('activate', function(e){
+  self.clients.claim();
 });
-
-self.addEventListener('fetch', function(event) {
-  // pass-through fetch handler — required for installability, not for real caching
-  event.respondWith(
-    fetch(event.request).catch(function() {
-      return caches.match(event.request);
-    })
-  );
+self.addEventListener('fetch', function(e){
+  // pass-through: just let the network handle every request
+  e.respondWith(fetch(e.request));
 });
