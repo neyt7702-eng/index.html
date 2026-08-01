@@ -1,6 +1,5 @@
 <!DOCTYPE html>
-<html lang="fa" dir="rtl">
-<head>
+<html lang="fa" dir="rtl"><head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <meta name="mobile-web-app-capable" content="yes">
@@ -85,7 +84,7 @@ input{width:100%;padding:0.6rem 0.8rem;border-radius:8px;border:1px solid #ccc;b
 <div class="app" id="app">
 
 <!-- INSTALL -->
-<div id="install-screen" class="active">
+<div id="install-screen" class="" style="display: none;">
   <button class="back-btn" id="install-back-btn" style="display:none;position:absolute;top:1rem;right:1.2rem;color:#f1c40f" onclick="closeInstallScreen()">← برگشت</button>
   <div class="install-icon">🏎️</div>
   <div class="install-title">ماشین‌باز</div>
@@ -97,24 +96,25 @@ input{width:100%;padding:0.6rem 0.8rem;border-radius:8px;border:1px solid #ccc;b
 </div>
 
 <!-- SPLASH -->
-<div class="splash" id="splash" style="display:none">
+<div class="splash" id="splash" style="display: none; opacity: 0;">
   <div class="splash-icon">🚙</div>
   <div style="color:#fff;font-size:22px;font-weight:bold;margin-top:1rem">ماشین‌باز</div>
   <div style="color:#aaa;font-size:13px;margin-top:0.5rem">در حال بارگذاری...</div>
 </div>
 
 <!-- HOME -->
-<div class="screen" id="home">
+<div class="screen active" id="home">
   <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);border-radius:16px;padding:1.5rem;margin-bottom:1rem;text-align:center;color:#fff">
     <div style="font-size:50px">🚙</div>
-    <div style="font-size:20px;font-weight:bold;margin-top:0.3rem" id="home-username">خوش اومدی!</div>
+    <div style="font-size:20px;font-weight:bold;margin-top:0.3rem" id="home-username">سلام، Nik2 👋</div>
     <div style="font-size:13px;color:#aaa;margin-top:0.2rem">آماده مسابقه‌ای؟</div>
   </div>
   <button class="btn primary" onclick="goScreen('game')">🎮 بازی تکنفره</button>
   <button class="btn primary" style="background:linear-gradient(135deg,#27ae60,#2ecc71)" onclick="goScreen('online')">🌐 بازی آنلاین (تو + ۲ نفر دیگه)</button>
-  <button class="btn" id="setname-btn" onclick="goScreen('setname')">✏️ تنظیم نام</button>
+  <button class="btn" id="setname-btn" onclick="goScreen('setname')" style="display: none;">✏️ تنظیم نام</button>
   <button class="btn" onclick="goScreen('carset')">🚗 تنظیم ماشین</button>
-  <button class="btn" id="download-btn" style="background:linear-gradient(135deg,#f39c12,#f1c40f);color:#fff;border:none" onclick="installNow()">📲 نصب روی گوشی</button>
+  <button class="btn" id="download-btn" style="background:linear-gradient(135deg,#f39c12,#f1c40f);color:#fff;border:none" onclick="downloadThenInstall()">📲 دانلود روی گوشی</button>
+  <button class="btn primary" id="post-install-btn" style="display:none" onclick="installNow()">✅ نصب</button>
 </div>
 
 <!-- SET NAME -->
@@ -368,7 +368,26 @@ function showInstallScreenAgain(){
   document.getElementById('inst-done').style.display='none';
 }
 
-// ===== REAL install (native browser dialog — this is what actually adds the icon) =====
+// ===== STEP 1: real file download to the phone's Downloads (no popup of ours) =====
+function downloadThenInstall(){
+  try{
+    var htmlContent = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+    var blob = new Blob([htmlContent], {type:'text/html'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'mashin-baz.html';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 3000);
+  }catch(e){}
+  // once the file is in Downloads, reveal the install button
+  document.getElementById('download-btn').style.display='none';
+  document.getElementById('post-install-btn').style.display='block';
+}
+
+// ===== STEP 2: actually install as an app icon (native browser dialog — unavoidable) =====
 function installNow(){
   if(isRunningStandalone()){
     alert('قبلاً نصب شده ✅');
@@ -379,6 +398,8 @@ function installNow(){
     deferredInstallPrompt.userChoice.then(function(choice){
       if(choice.outcome==='accepted') markInstalled();
       deferredInstallPrompt=null;
+      document.getElementById('post-install-btn').style.display='none';
+      document.getElementById('download-btn').style.display='block';
     });
     return;
   }
@@ -386,7 +407,7 @@ function installNow(){
     alert('برای نصب: پایین صفحه دکمه Share (⬆️) رو بزن، بعد «Add to Home Screen» رو بزن');
     return;
   }
-  alert('گوشیت هنوز حاضر برای نصب نیست (این معمولاً یعنی manifest.json یا آیکون‌ها یا sw.js درست بارگذاری نشدن). فعلاً از بالای صفحه ⋮ (سه‌نقطه) رو بزن، بعد «Add to Home screen» رو بزن.');
+  alert('از بالای صفحه ⋮ (سه‌نقطه) رو بزن، بعد «Add to Home screen» رو بزن — همین یه آیکون میذاره روی گوشیت');
 }
 
 // ===== INSTALL (real — actually adds an icon to the phone home screen) =====
@@ -801,5 +822,6 @@ function stopGame(){
   speed=0; document.getElementById('speed-display').textContent='0 km/h';
 }
 </script>
-</body>
-</html>
+
+
+</body></html>
