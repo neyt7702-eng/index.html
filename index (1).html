@@ -105,6 +105,10 @@ input{width:100%;padding:0.6rem 0.8rem;border-radius:8px;border:1px solid #ccc;b
 
 <!-- HOME -->
 <div class="screen" id="home">
+  <div id="auth-bar" style="display:flex;align-items:center;justify-content:space-between;background:#f8f8f8;border:1px solid #e0e0e0;border-radius:10px;padding:0.6rem 0.8rem;margin-bottom:0.8rem;font-size:13px">
+    <span id="auth-bar-text">مهمان</span>
+    <button class="btn" id="auth-bar-btn" style="width:auto;margin:0;padding:0.4rem 0.9rem;font-size:12px" onclick="goScreen('auth')">🔐 ورود / ثبت‌نام</button>
+  </div>
   <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);border-radius:16px;padding:1.5rem;margin-bottom:1rem;text-align:center;color:#fff">
     <div style="font-size:50px">🚙</div>
     <div style="font-size:20px;font-weight:bold;margin-top:0.3rem" id="home-username">خوش اومدی!</div>
@@ -118,6 +122,41 @@ input{width:100%;padding:0.6rem 0.8rem;border-radius:8px;border:1px solid #ccc;b
   <button class="btn" id="setname-btn" onclick="goScreen('setname')">✏️ تنظیم نام</button>
   <button class="btn" onclick="goScreen('carset')">🚗 تنظیم ماشین</button>
   <button class="btn" id="download-btn" style="background:linear-gradient(135deg,#f39c12,#f1c40f);color:#fff;border:none" onclick="installNow()">📲 نصب روی گوشی</button>
+</div>
+
+<!-- AUTH (email + password, stored locally on this device) -->
+<div class="screen" id="auth">
+  <div class="nav">
+    <button class="back-btn" onclick="goScreen('home')">← برگشت</button>
+    <h2 style="margin:0">حساب کاربری</h2>
+    <div style="width:60px"></div>
+  </div>
+  <div class="tab-bar">
+    <div class="tab active" id="auth-tab-login" onclick="setAuthTab('login')">ورود</div>
+    <div class="tab" id="auth-tab-signup" onclick="setAuthTab('signup')">ثبت‌نام</div>
+  </div>
+
+  <!-- LOGIN -->
+  <div class="card" id="auth-login-card">
+    <p>ایمیل و رمزت رو وارد کن:</p>
+    <input type="email" id="login-email" placeholder="ایمیل">
+    <input type="password" id="login-password" placeholder="رمز عبور">
+    <button class="btn primary" onclick="doLogin()">✅ ورود</button>
+    <div id="login-msg" style="font-size:13px;text-align:center;margin-top:0.5rem"></div>
+  </div>
+
+  <!-- SIGNUP -->
+  <div class="card" id="auth-signup-card" style="display:none">
+    <p>یه حساب جدید بساز:</p>
+    <input type="email" id="signup-email" placeholder="ایمیل">
+    <input type="password" id="signup-password" placeholder="رمز عبور">
+    <input type="password" id="signup-password2" placeholder="تکرار رمز عبور">
+    <button class="btn primary" onclick="doSignup()">✅ ثبت‌نام</button>
+    <div id="signup-msg" style="font-size:13px;text-align:center;margin-top:0.5rem"></div>
+  </div>
+
+  <button class="btn" id="auth-logout-btn" style="display:none;background:#fce8e8;color:#c0392b;border-color:#f5c6c6" onclick="doLogout()">🚪 خروج از حساب</button>
+  <button class="btn" id="auth-guest-btn" onclick="goScreen('home')">👤 ادامه بدون حساب (مهمان)</button>
 </div>
 
 <!-- SET NAME -->
@@ -442,6 +481,89 @@ function loadSaved(){
 function saveName_(){ try{ localStorage.setItem('mb_username', userName); }catch(e){} }
 function saveMaxScore_(){ try{ localStorage.setItem('mb_maxscore', String(maxScore)); }catch(e){} }
 function saveXp_(){ try{ localStorage.setItem('mb_xp', String(xp)); localStorage.setItem('mb_level', String(level)); }catch(e){} }
+
+// ===== ACCOUNT (email + password — stored only on this device, no server) =====
+function getUsers(){
+  try{ return JSON.parse(localStorage.getItem('mb_users') || '{}'); }catch(e){ return {}; }
+}
+function saveUsers(users){
+  try{ localStorage.setItem('mb_users', JSON.stringify(users)); }catch(e){}
+}
+function getCurrentUser(){
+  try{ return localStorage.getItem('mb_current_user') || null; }catch(e){ return null; }
+}
+function setCurrentUser(email){
+  try{
+    if(email) localStorage.setItem('mb_current_user', email);
+    else localStorage.removeItem('mb_current_user');
+  }catch(e){}
+}
+
+function setAuthTab(tab){
+  document.getElementById('auth-tab-login').classList.toggle('active', tab==='login');
+  document.getElementById('auth-tab-signup').classList.toggle('active', tab==='signup');
+  document.getElementById('auth-login-card').style.display = tab==='login' ? 'block' : 'none';
+  document.getElementById('auth-signup-card').style.display = tab==='signup' ? 'block' : 'none';
+}
+
+function doSignup(){
+  var email = document.getElementById('signup-email').value.trim().toLowerCase();
+  var pass = document.getElementById('signup-password').value;
+  var pass2 = document.getElementById('signup-password2').value;
+  var msg = document.getElementById('signup-msg');
+  if(!email || !pass){ msg.style.color='#c0392b'; msg.textContent='ایمیل و رمز رو کامل وارد کن'; return; }
+  if(pass !== pass2){ msg.style.color='#c0392b'; msg.textContent='رمزها یکی نیستن'; return; }
+  var users = getUsers();
+  if(users[email]){ msg.style.color='#c0392b'; msg.textContent='این ایمیل قبلاً ثبت‌نام شده — برو تب ورود'; return; }
+  users[email] = pass;
+  saveUsers(users);
+  setCurrentUser(email);
+  msg.style.color='green'; msg.textContent='✅ ثبت‌نام شد!';
+  setTimeout(()=>goScreen('home'), 700);
+}
+
+function doLogin(){
+  var email = document.getElementById('login-email').value.trim().toLowerCase();
+  var pass = document.getElementById('login-password').value;
+  var msg = document.getElementById('login-msg');
+  var users = getUsers();
+  if(!users[email] || users[email] !== pass){
+    msg.style.color='#c0392b'; msg.textContent='ایمیل یا رمز اشتباهه';
+    return;
+  }
+  setCurrentUser(email);
+  msg.style.color='green'; msg.textContent='✅ وارد شدی!';
+  setTimeout(()=>goScreen('home'), 500);
+}
+
+function doLogout(){
+  setCurrentUser(null);
+  goScreen('home');
+}
+
+function updateAuthBar(){
+  var cur = getCurrentUser();
+  var bar = document.getElementById('auth-bar-text');
+  var btn = document.getElementById('auth-bar-btn');
+  if(cur){
+    bar.textContent = '👤 ' + cur;
+    btn.textContent = '🚪 خروج';
+    btn.onclick = doLogout;
+  } else {
+    bar.textContent = 'مهمان';
+    btn.textContent = '🔐 ورود / ثبت‌نام';
+    btn.onclick = function(){ goScreen('auth'); };
+  }
+}
+
+function updateAuthScreen(){
+  var cur = getCurrentUser();
+  document.getElementById('auth-login-card').style.display = cur ? 'none' : (document.getElementById('auth-tab-login').classList.contains('active') ? 'block' : 'none');
+  document.getElementById('auth-signup-card').style.display = cur ? 'none' : (document.getElementById('auth-tab-signup').classList.contains('active') ? 'block' : 'none');
+  document.querySelector('.tab-bar').style.display = cur ? 'none' : 'flex';
+  document.getElementById('auth-logout-btn').style.display = cur ? 'block' : 'none';
+  document.getElementById('auth-guest-btn').style.display = cur ? 'none' : 'block';
+}
 function saveCar_(){ try{ localStorage.setItem('mb_car', selectedCar); }catch(e){} }
 function wasInstalledBefore(){ try{ return localStorage.getItem('mb_installed')==='1'; }catch(e){ return false; } }
 function markInstalled(){ try{ localStorage.setItem('mb_installed','1'); }catch(e){} }
@@ -613,6 +735,10 @@ function goScreen(id){
     var hasName = false;
     try{ hasName = !!localStorage.getItem('mb_username'); }catch(e){}
     document.getElementById('setname-btn').style.display = hasName ? 'none' : 'block';
+    updateAuthBar();
+  }
+  if(id==='auth'){
+    updateAuthScreen();
   }
   if(id==='game'){
     document.getElementById('game-title').textContent=userName;
