@@ -122,6 +122,7 @@ input{width:100%;padding:0.6rem 0.8rem;border-radius:8px;border:1px solid #ccc;b
   <button class="btn" id="setname-btn" onclick="goScreen('setname')">✏️ تنظیم نام</button>
   <button class="btn" onclick="goScreen('carset')">🚗 تنظیم ماشین</button>
   <button class="btn" id="download-btn" style="background:linear-gradient(135deg,#f39c12,#f1c40f);color:#fff;border:none" onclick="installNow()">📲 نصب روی گوشی</button>
+  <div id="install-status" style="display:none;text-align:center;font-size:12px;color:#666;margin-top:-0.3rem;margin-bottom:0.5rem"></div>
 </div>
 
 <!-- AUTH (email + password, stored locally on this device) -->
@@ -637,14 +638,28 @@ function showInstallScreenAgain(){
 
 // ===== REAL install (native browser dialog — this is what actually adds the icon) =====
 function installNow(){
+  var statusEl = document.getElementById('install-status');
   if(isRunningStandalone()){
     alert('قبلاً نصب شده ✅');
     return;
   }
   if(deferredInstallPrompt){
+    statusEl.style.display='block';
+    statusEl.textContent='⏳ در حال نصب... چند ثانیه صبر کن';
     deferredInstallPrompt.prompt();
     deferredInstallPrompt.userChoice.then(function(choice){
-      if(choice.outcome==='accepted') markInstalled();
+      if(choice.outcome==='accepted'){
+        markInstalled();
+        statusEl.textContent='⏳ داره میره رو گوشیت... چند لحظه دیگه صبر کن';
+        // the OS/launcher can take a few seconds to actually place the icon
+        setTimeout(function(){
+          statusEl.textContent='✅ نصب شد!';
+          setTimeout(function(){ statusEl.style.display='none'; }, 3000);
+        }, 3000);
+      } else {
+        statusEl.textContent='❌ نصب لغو شد';
+        setTimeout(function(){ statusEl.style.display='none'; }, 2000);
+      }
       deferredInstallPrompt=null;
     });
     return;
