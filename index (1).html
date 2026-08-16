@@ -91,7 +91,7 @@ input{width:100%;padding:0.6rem 0.8rem;border-radius:8px;border:1px solid #ccc;b
   <button class="btn" onclick="goScreen('carset')">🚗 تنظیم ماشین</button>
   <button class="btn" id="download-btn" style="background:linear-gradient(135deg,#f39c12,#f1c40f);color:#fff;border:none" onclick="installNow()">📲 نصب اندروید</button>
   <div id="install-status" style="display:none;text-align:center;font-size:12px;color:#666;margin-top:-0.3rem;margin-bottom:0.6rem"></div>
-  <button class="btn" id="ios-install-btn" style="background:#111;color:#fff;border:none" onclick="alert('این گزینه فقط توی Safari کار می‌کنه.')"> نصب روی آیفون (Safari)</button>
+  <button class="btn" id="ios-install-btn" style="background:#111;color:#fff;border:none" onclick="iosInstallHelp()"> نصب روی آیفون (Safari)</button>
 </div>
 
 <!-- AUTH (email + password, stored locally on this device) -->
@@ -398,6 +398,22 @@ window.addEventListener('appinstalled', function(){
 });
 function isIOSDevice(){
   return /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+}
+function isSafariBrowser(){
+  var ua = navigator.userAgent;
+  // Safari UA has "Safari" but not "CriOS" (Chrome), "FxiOS" (Firefox), etc.
+  return /^((?!chrome|android|crios|fxios|edgios|opios).)*safari/i.test(ua);
+}
+function iosInstallHelp(){
+  if(isRunningStandalone()){
+    alert('قبلاً نصب شده ✅');
+    return;
+  }
+  if(!isSafariBrowser()){
+    alert('این گزینه فقط توی Safari کار می‌کنه — این لینک رو تو Safari باز کن.');
+    return;
+  }
+  alert('برای نصب:\n1) پایین صفحه دکمه‌ی Share (مربع با فلش بالا ⬆️) رو بزن\n2) اسکرول کن و «Add to Home Screen» رو بزن\n3) بالا سمت راست «Add» رو بزن');
 }
 function isRunningStandalone(){
   return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
