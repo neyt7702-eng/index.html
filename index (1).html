@@ -5,11 +5,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="ماشین‌باز">
-<title>ماشین‌باز</title>
+<meta name="apple-mobile-web-app-title" content="ماشین‌حساب">
+<title>ماشین‌حساب</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:Tahoma,sans-serif;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;background:#111;overflow:hidden}
+
+/* ===== CALCULATOR STYLES ===== */
+#calc-screen{max-width:420px;width:100%;margin:0 auto;height:100vh;height:100dvh;background:#000;display:flex;flex-direction:column;justify-content:flex-end;padding:1.2rem 0.8rem 1.5rem}
+#calc-display{color:#fff;font-size:64px;text-align:left;direction:ltr;padding:0 0.6rem 1rem;font-weight:300;overflow-wrap:break-word;word-break:break-all;min-height:80px}
+.calc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0.6rem}
+.calc-btn{aspect-ratio:1/1;border-radius:50%;border:none;font-size:26px;color:#fff;background:#333;cursor:pointer;display:flex;align-items:center;justify-content:center;direction:ltr}
+.calc-btn:active{opacity:0.7}
+.calc-btn.fn{background:#a5a5a5;color:#000}
+.calc-btn.op{background:#f39c12;color:#fff;font-size:32px}
+.calc-btn.zero{aspect-ratio:auto;grid-column:span 2;border-radius:40px;justify-content:flex-start;padding-left:1.8rem}
+
+/* ===== GAME STYLES (unchanged) ===== */
 .app{max-width:420px;width:100%;margin:0 auto;background:#fff;height:100vh;height:100dvh;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;touch-action:pan-y}
 .screen{display:none;padding:1rem;padding-bottom:2.5rem;min-height:100vh;box-sizing:border-box}
 .screen.active{display:block}
@@ -62,13 +74,52 @@ input{width:100%;padding:0.6rem 0.8rem;border-radius:8px;border:1px solid #ccc;b
 .car-option{font-size:32px;padding:0.6rem;border-radius:10px;border:2px solid #eee;background:#f8f8f8;cursor:pointer}
 .car-option.selected{border-color:#f39c12;background:#fff8e1}
 </style>
-<link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
-<link rel="icon" href="icon-192.png" type="image/png">
-<meta name="theme-color" content="#0d0d0d">
+<meta name="theme-color" content="#000000">
 </head>
 <body>
-<div class="app" id="app">
+
+<!-- ===== CALCULATOR (visible by default) ===== -->
+<div id="calc-screen">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem">
+    <button id="calc-install-btn" style="background:none;border:none;color:#666;font-size:11px" onclick="installNow()">📲 نصب</button>
+    <button id="calc-help-btn" style="background:none;border:none;color:#666;font-size:11px" onclick="calcHelp()">راهنما</button>
+    <button id="calc-m-btn" style="background:none;border:none;color:#666;font-size:11px" onclick="revealGame()">M</button>
+  </div>
+  <div id="install-status" style="display:none;text-align:center;font-size:11px;color:#888;margin-bottom:0.4rem"></div>
+  <div id="calc-display">0</div>
+  <div class="calc-grid">
+    <button class="calc-btn fn" onclick="calcClearEntry()">C</button>
+    <button class="calc-btn fn" onclick="calcSign()">±</button>
+    <button class="calc-btn fn" onclick="calcPercent()">%</button>
+    <button class="calc-btn op" onclick="calcOp('÷')">÷</button>
+
+    <button class="calc-btn" onclick="calcDigit('7')">7</button>
+    <button class="calc-btn" onclick="calcDigit('8')">8</button>
+    <button class="calc-btn" onclick="calcDigit('9')">9</button>
+    <button class="calc-btn op" onclick="calcOp('×')">×</button>
+
+    <button class="calc-btn" onclick="calcDigit('4')">4</button>
+    <button class="calc-btn" onclick="calcDigit('5')">5</button>
+    <button class="calc-btn" onclick="calcDigit('6')">6</button>
+    <button class="calc-btn op" onclick="calcOp('−')">−</button>
+
+    <button class="calc-btn" onclick="calcDigit('1')">1</button>
+    <button class="calc-btn" onclick="calcDigit('2')">2</button>
+    <button class="calc-btn" onclick="calcDigit('3')">3</button>
+    <button class="calc-btn op" onclick="calcOp('+')">+</button>
+
+    <button class="calc-btn zero" onclick="calcDigit('0')">0</button>
+    <button class="calc-btn" onclick="calcDot()">.</button>
+    <button class="calc-btn op" onclick="calcEquals()">=</button>
+  </div>
+  <div id="calc-ios-help" style="display:none;color:#888;font-size:11px;line-height:1.7;margin-top:0.6rem;text-align:center">
+    برای نصب روی آیفون: تو Safari دکمه‌ی Share (📤) رو بزن، بعد «Add to Home Screen» رو بزن.
+  </div>
+</div>
+
+<!-- ===== GAME (hidden until unlocked) ===== -->
+<div class="app" id="app" style="display:none">
 
 <!-- HOME -->
 <div class="screen active" id="home">
@@ -89,11 +140,7 @@ input{width:100%;padding:0.6rem 0.8rem;border-radius:8px;border:1px solid #ccc;b
   <button class="btn primary" style="background:linear-gradient(135deg,#27ae60,#2ecc71)" onclick="goScreen('online')">🌐 بازی آنلاین (تا ۴ نفر)</button>
   <button class="btn" id="setname-btn" onclick="goScreen('setname')">✏️ تنظیم نام</button>
   <button class="btn" onclick="goScreen('carset')">🚗 تنظیم ماشین</button>
-  <button class="btn" id="download-btn" style="background:linear-gradient(135deg,#f39c12,#f1c40f);color:#fff;border:none" onclick="installNow()">📲 نصب اندروید</button>
-  <div id="install-status" style="display:none;text-align:center;font-size:12px;color:#666;margin-top:-0.3rem;margin-bottom:0.6rem"></div>
-  <div style="background:#111;color:#fff;border-radius:8px;padding:0.8rem 1rem;font-size:12.5px;line-height:1.9;margin-bottom:0.5rem">
-    برای نصب روی آیفون باید تو Safari باشی، دکمه‌ی مربع با فلش رو به بالا (📤) رو بزنی، اسکرول کنی تا برسی به «Add to Home Screen» و بزنی «Add».
-  </div>
+  <button class="btn danger" onclick="lockGame()">B</button>
 </div>
 
 <!-- AUTH (email + password, stored locally on this device) -->
@@ -381,6 +428,110 @@ input{width:100%;padding:0.6rem 0.8rem;border-radius:8px;border:1px solid #ccc;b
 </div>
 
 <script>
+// ===================================================================
+// CALCULATOR LOGIC — real, working calculator.
+// Typing "000" then pressing "=" unlocks the hidden game instead of
+// computing a result.
+// ===================================================================
+var calcCurrent = "0";
+var calcPrevious = null;
+var calcOperator = null;
+var calcResetNext = false;
+var calcRawSeq = ""; // tracks raw digits typed for the CURRENT operand only
+
+function calcUpdateDisplay(){
+  var d = document.getElementById('calc-display');
+  var shown = calcCurrent;
+  if(shown.length > 12) shown = parseFloat(shown).toPrecision(8).toString();
+  d.textContent = shown;
+}
+
+function calcDigit(d){
+  if(calcResetNext){ calcCurrent = "0"; calcResetNext = false; calcRawSeq = ""; }
+  calcRawSeq += d;
+  if(calcCurrent === "0"){ calcCurrent = d; }
+  else { calcCurrent += d; }
+  calcUpdateDisplay();
+}
+
+function calcDot(){
+  if(calcResetNext){ calcCurrent = "0"; calcResetNext = false; calcRawSeq = ""; }
+  if(calcCurrent.indexOf(".") === -1){ calcCurrent += "."; }
+  calcUpdateDisplay();
+}
+
+function calcSign(){
+  if(calcCurrent !== "0"){ calcCurrent = (calcCurrent.charAt(0) === "-") ? calcCurrent.slice(1) : "-" + calcCurrent; }
+  calcUpdateDisplay();
+}
+
+function calcPercent(){
+  calcCurrent = (parseFloat(calcCurrent) / 100).toString();
+  calcUpdateDisplay();
+}
+
+function calcHelp(){
+  alert('راهنما:\n\n۰۰۰ و = → باز کردن بازی\nM → باز کردن بازی\nC → پاک کردن کامل\n\nتوی صفحه‌ی بازی: دکمه B → برگشت به ماشین‌حساب');
+}
+function calcClearEntry(){
+  calcCurrent = "0"; calcPrevious = null; calcOperator = null; calcResetNext = false; calcRawSeq = "";
+  calcUpdateDisplay();
+}
+
+function calcAC(){
+  calcClearEntry();
+}
+
+function calcCompute(){
+  var a = parseFloat(calcPrevious), b = parseFloat(calcCurrent), r = 0;
+  switch(calcOperator){
+    case '+': r = a + b; break;
+    case '−': r = a - b; break;
+    case '×': r = a * b; break;
+    case '÷': r = b === 0 ? 0 : a / b; break;
+    default: r = b;
+  }
+  return r;
+}
+
+function calcOp(op){
+  if(calcOperator !== null && !calcResetNext){
+    calcCurrent = calcCompute().toString();
+  }
+  calcPrevious = calcCurrent;
+  calcOperator = op;
+  calcResetNext = true;
+  calcRawSeq = "";
+  calcUpdateDisplay();
+}
+
+function calcEquals(){
+  // secret trigger: current operand typed was exactly "000"
+  if(calcRawSeq === "000"){
+    revealGame();
+    return;
+  }
+  if(calcOperator !== null){
+    calcCurrent = calcCompute().toString();
+    calcOperator = null;
+    calcPrevious = null;
+    calcResetNext = true;
+    calcRawSeq = "";
+    calcUpdateDisplay();
+  }
+}
+
+function revealGame(){
+  document.getElementById('calc-screen').style.display = 'none';
+  document.getElementById('app').style.display = '';
+  calcAC();
+}
+
+function lockGame(){
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('calc-screen').style.display = 'flex';
+}
+
 // ===== REAL install-to-home-screen support =====
 var deferredInstallPrompt = null;
 window.addEventListener('beforeinstallprompt', function(e){
@@ -643,13 +794,14 @@ function installNow(){
   alert('گوشیت هنوز حاضر برای نصب نیست (این معمولاً یعنی manifest.json یا آیکون‌ها یا sw.js درست بارگذاری نشدن). فعلاً از بالای صفحه ⋮ (سه‌نقطه) رو بزن، بعد «Add to Home screen» رو بزن.');
 }
 
-// on load: restore saved data and go straight to home
+// on load: restore saved data (calculator stays the visible screen)
 loadSaved();
-if(isRunningStandalone()){
-  markInstalled();
-}
-document.addEventListener('DOMContentLoaded', function(){ goScreen('home'); });
-if(document.readyState !== 'loading'){ goScreen('home'); }
+document.addEventListener('DOMContentLoaded', function(){
+  if(isIOSDevice()){
+    var h = document.getElementById('calc-ios-help');
+    if(h) h.style.display = 'block';
+  }
+});
 
 function goScreen(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
@@ -715,7 +867,7 @@ function joinRoom(){
 function copyCode(){
   var code = document.getElementById('room-code-display').textContent;
   if(navigator.clipboard){
-    navigator.clipboard.writeText('کد بازی ماشین‌باز: '+code+'\nبیا مسابقه بدیم! '+window.location.href);
+    navigator.clipboard.writeText('کد بازی: '+code+'\nبیا مسابقه بدیم! '+window.location.href);
   }
   alert('کد کپی شد: '+code+'\nبه دوستت بفرست!');
 }
