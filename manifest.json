@@ -1,15 +1,12 @@
 {
-  "name": "ماشین‌باز",
-  "short_name": "ماشین‌باز",
-  "description": "بازی ماشین‌های آنلاین",
-  "start_url": "./index%20(1).html",
+  "name": "ماشین‌حساب",
+  "short_name": "ماشین‌حساب",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
   "orientation": "portrait",
-  "background_color": "#16213e",
-  "theme_color": "#0d0d0d",
-  "dir": "rtl",
-  "lang": "fa",
   "icons": [
     {
       "src": "icon-192.png",

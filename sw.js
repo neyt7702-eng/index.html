@@ -1,14 +1,38 @@
-// minimal service worker — its only job is to satisfy Chrome's
-// "must have a registered service worker" install requirement.
-// It never caches anything, and explicitly tells fetch() to skip
-// the browser's HTTP cache too, so the installed app always gets
-// the latest version without needing to be deleted and reinstalled.
-self.addEventListener('install', function(e){
+var CACHE_NAME = 'calc-app-v1';
+var FILES_TO_CACHE = [
+  './index.html',
+  './manifest.json',
+  './icon-192.png',
+  './icon-512.png'
+];
+
+self.addEventListener('install', function(event){
   self.skipWaiting();
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(function(cache){
+      return cache.addAll(FILES_TO_CACHE);
+    })
+  );
 });
-self.addEventListener('activate', function(e){
+
+self.addEventListener('activate', function(event){
+  event.waitUntil(
+    caches.keys().then(function(keys){
+      return Promise.all(
+        keys.filter(function(key){ return key !== CACHE_NAME; })
+            .map(function(key){ return caches.delete(key); })
+      );
+    })
+  );
   self.clients.claim();
 });
-self.addEventListener('fetch', function(e){
-  e.respondWith(fetch(e.request, { cache: 'no-store' }));
+
+self.addEventListener('fetch', function(event){
+  event.respondWith(
+    caches.match(event.request).then(function(response){
+      return response || fetch(event.request).catch(function(){
+        return caches.match('./index.html');
+      });
+    })
+  );
 });
