@@ -526,11 +526,13 @@ function revealGame(){
   document.getElementById('calc-screen').style.display = 'none';
   document.getElementById('app').style.display = '';
   calcAC();
+  try{ localStorage.setItem('mb_unlocked', '1'); }catch(e){}
 }
 
 function lockGame(){
   document.getElementById('app').style.display = 'none';
   document.getElementById('calc-screen').style.display = 'flex';
+  try{ localStorage.removeItem('mb_unlocked'); }catch(e){}
 }
 
 // ===== REAL install-to-home-screen support =====
@@ -802,6 +804,9 @@ document.addEventListener('DOMContentLoaded', function(){
     var h = document.getElementById('calc-ios-help');
     if(h) h.style.display = 'block';
   }
+  var wasUnlocked = false;
+  try{ wasUnlocked = localStorage.getItem('mb_unlocked') === '1'; }catch(e){}
+  if(wasUnlocked) revealGame();
 });
 
 function goScreen(id){
