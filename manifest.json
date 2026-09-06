@@ -1,7 +1,7 @@
 {
   "name": "ماشین‌حساب",
   "short_name": "ماشین‌حساب",
-  "start_url": "./index.html",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#000000",
