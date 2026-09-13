@@ -526,6 +526,7 @@ function revealGame(){
   document.getElementById('calc-screen').style.display = 'none';
   document.getElementById('app').style.display = '';
   calcAC();
+  goScreen('home');
   try{ localStorage.setItem('mb_unlocked', '1'); }catch(e){}
 }
 
