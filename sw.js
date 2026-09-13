@@ -29,9 +29,13 @@ self.addEventListener('activate', function(event){
 
 self.addEventListener('fetch', function(event){
   event.respondWith(
-    caches.match(event.request).then(function(response){
-      return response || fetch(event.request).catch(function(){
-        return caches.match('./index.html');
+    fetch(event.request).then(function(response){
+      var copy = response.clone();
+      caches.open(CACHE_NAME).then(function(cache){ cache.put(event.request, copy); });
+      return response;
+    }).catch(function(){
+      return caches.match(event.request).then(function(cached){
+        return cached || caches.match('./index.html');
       });
     })
   );
