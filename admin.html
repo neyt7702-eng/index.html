@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>پنل مدیریت</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:Tahoma,sans-serif}
+body{background:#f5f5f5;min-height:100vh}
+.container{max-width:480px;margin:0 auto;padding:1rem}
+.card{background:#fff;border-radius:12px;padding:1.2rem;margin-bottom:1rem;box-shadow:0 2px 8px #0001}
+h1{font-size:18px;color:#222;margin-bottom:1rem}
+input{width:100%;padding:0.6rem 0.8rem;border-radius:8px;border:1px solid #ccc;font-size:15px;margin-bottom:0.8rem;font-family:Tahoma,sans-serif}
+.btn{display:block;width:100%;padding:0.7rem;border-radius:8px;border:none;font-size:15px;cursor:pointer;font-family:Tahoma,sans-serif}
+.btn.primary{background:linear-gradient(135deg,#f39c12,#f1c40f);color:#fff}
+.btn.danger{background:#fce8e8;color:#c0392b}
+.btn.green{background:#e8f5e9;color:#2e7d32}
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh}
+#login-box{width:100%;max-width:340px;background:#fff;border-radius:16px;padding:2rem;box-shadow:0 4px 20px #0002}
+#admin-screen{display:none}
+.user-row{display:flex;align-items:center;justify-content:space-between;padding:0.7rem 0;border-bottom:1px solid #eee;gap:0.5rem;font-size:13px}
+.user-row:last-child{border-bottom:none}
+.ban-btn{padding:0.3rem 0.8rem;border-radius:8px;border:none;cursor:pointer;font-size:12px;white-space:nowrap;font-family:Tahoma,sans-serif}
+#msg{font-size:13px;text-align:center;margin-top:0.5rem}
+.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
+.logout-btn{font-size:13px;color:#c0392b;cursor:pointer;border:none;background:none;font-family:Tahoma,sans-serif}
+.stat{display:inline-block;background:#e8f5e9;color:#2e7d32;border-radius:20px;padding:2px 10px;font-size:12px;margin-right:4px}
+.stat.banned{background:#fce8e8;color:#c0392b}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div id="login-box">
+    <h1 style="text-align:center;margin-bottom:1.5rem">👑 پنل مدیریت ماشین‌باز</h1>
+    <input type="password" id="admin-pass" placeholder="رمز ورود">
+    <button class="btn primary" onclick="doAdminLogin()">✅ ورود</button>
+    <div id="msg"></div>
+  </div>
+</div>
+
+<!-- ADMIN PANEL -->
+<div id="admin-screen" class="container">
+  <div class="header">
+    <h1>👑 پنل مدیریت</h1>
+    <button class="logout-btn" onclick="doLogout()">خروج 🚪</button>
+  </div>
+  <div class="card" id="stats-box" style="font-size:13px;color:#666">در حال بارگذاری...</div>
+  <div class="card" id="users-list">در حال بارگذاری...</div>
+</div>
+
+<script>
+var SUPABASE_URL = 'https://xvmnehegvahkbaplrdrz.supabase.co';
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh2bW5laGVndmFoa2JhcGxyZHJ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1NDcxODIsImV4cCI6MjEwNTEyMzE4Mn0.Z1BoJ4gvaB_lwb8qFtwHqNF1vjLUfxvkFK_qlNMljPM';
+var ADMIN_PASS = 'nikb9098';
+var allUsers = [];
+
+async function sbFetch(path, method, body){
+  try{
+    var res = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
+      method: method || 'GET',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': method === 'PATCH' ? 'return=representation' : ''
+      },
+      body: body ? JSON.stringify(body) : undefined
+    });
+    var data = await res.json();
+    return {ok: res.ok, data: data};
+  }catch(e){ return {ok:false, data:null}; }
+}
+
+function doAdminLogin(){
+  var pass = document.getElementById('admin-pass').value;
+  var msg = document.getElementById('msg');
+  if(pass === ADMIN_PASS){
+    document.getElementById('login-screen').style.display='none';
+    document.getElementById('admin-screen').style.display='block';
+    loadUsers();
+  } else {
+    msg.style.color='#c0392b'; msg.textContent='رمز اشتباهه';
+  }
+}
+
+function doLogout(){
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('admin-screen').style.display='none';
+  document.getElementById('admin-pass').value='';
+}
+
+async function loadUsers(){
+  var list = document.getElementById('users-list');
+  list.innerHTML='در حال بارگذاری...';
+  var res = await sbFetch('users?select=email,name,banned,created_at&order=created_at.desc');
+  if(!res.ok || !res.data){ list.innerHTML='<p style="color:red">خطا در اتصال</p>'; return; }
+  allUsers = res.data;
+  updateStats();
+  renderUsers(allUsers);
+}
+
+function updateStats(){
+  var total = allUsers.length;
+  var banned = allUsers.filter(u=>u.banned).length;
+  document.getElementById('stats-box').innerHTML =
+    '👥 کل کاربران: <span class="stat">'+total+'</span> &nbsp; ❌ مسدود: <span class="stat banned">'+banned+'</span>';
+}
+
+function filterUsers(){
+  var q = document.getElementById('search-input').value.toLowerCase();
+  var filtered = allUsers.filter(u=>(u.email||'').includes(q)||(u.name||'').includes(q));
+  renderUsers(filtered);
+}
+
+function renderUsers(users){
+  var list = document.getElementById('users-list');
+  if(users.length === 0){ list.innerHTML='<p style="color:#aaa;text-align:center;padding:1rem">نتیجه‌ای پیدا نشد</p>'; return; }
+  list.innerHTML='';
+  users.forEach(function(u){
+    var row = document.createElement('div');
+    row.className='user-row';
+    var info = document.createElement('div');
+    info.innerHTML='<b>'+(u.name||'بدون نام')+'</b><br><span style="color:#999;font-size:11px">'+u.email+'</span>';
+    var btn = document.createElement('button');
+    btn.className='ban-btn';
+    if(u.banned){
+      btn.textContent='رفع مسدودی'; btn.style.background='#e8f5e9'; btn.style.color='#2e7d32';
+      btn.onclick=(function(em){ return function(){ toggleBan(em,false); }; })(u.email);
+    } else {
+      btn.textContent='مسدود'; btn.style.background='#fce8e8'; btn.style.color='#c0392b';
+      btn.onclick=(function(em){ return function(){ toggleBan(em,true); }; })(u.email);
+    }
+    row.appendChild(info); row.appendChild(btn);
+    list.appendChild(row);
+  });
+}
+
+async function toggleBan(email, ban){
+  var res = await sbFetch('users?email=eq.'+encodeURIComponent(email), 'PATCH', {banned: ban});
+  if(!res.ok){ alert('خطا در اتصال'); return; }
+  var u = allUsers.find(x=>x.email===email);
+  if(u) u.banned = ban;
+  updateStats();
+  filterUsers();
+}
+
+// Enter key on password field
+document.getElementById('admin-pass').addEventListener('keydown', function(e){
+  if(e.key==='Enter') doAdminLogin();
+});
+</script>
+</body>
+</html>
