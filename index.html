@@ -726,11 +726,6 @@ async function doLogin(){
   var email = document.getElementById('login-email').value.trim().toLowerCase();
   var pass = document.getElementById('login-password').value;
   var msg = document.getElementById('login-msg');
-  if(email === ADMIN_EMAIL && pass === 'nikb9098'){
-    msg.textContent='';
-    openAdmin();
-    return;
-  }
   msg.style.color='#666'; msg.textContent='⏳ در حال بررسی...';
   var banned = await checkBanned(email);
   if(banned){ msg.style.color='#c0392b'; msg.textContent='❌ این حساب مسدود شده'; return; }
