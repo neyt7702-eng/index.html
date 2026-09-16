@@ -78,75 +78,40 @@ input{width:100%;padding:0.6rem 0.8rem;border-radius:8px;border:1px solid #ccc;b
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="theme-color" content="#000000">
 <script>
-// Firebase config — loaded async so it never blocks the loading bar
-var db = null;
+var SUPABASE_URL = 'https://xvmnehegvahkbaplrdrz.supabase.co';
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh2bW5laGVndmFoa2JhcGxyZHJ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1NDcxODIsImV4cCI6MjEwNTEyMzE4Mn0.Z1BoJ4gvaB_lwb8qFtwHqNF1vjLUfxvkFK_qlNMljPM';
 var ADMIN_EMAIL = 'jeyt082@gmail.com';
-var firebaseReady = false;
 
-function loadFirebase(){
-  return new Promise(function(resolve){
-    if(firebaseReady){ resolve(); return; }
-    var s1 = document.createElement('script');
-    s1.src = 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js';
-    s1.onload = function(){
-      var s2 = document.createElement('script');
-      s2.src = 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js';
-      s2.onload = function(){
-        try{
-          if(!firebase.apps.length){
-            firebase.initializeApp({
-              apiKey: "AIzaSyB8QI8xv89gq5V62wHOOmDIA6XBNErxCDo",
-              authDomain: "mashinbaz.firebaseapp.com",
-              projectId: "mashinbaz",
-              storageBucket: "mashinbaz.firebasestorage.app",
-              messagingSenderId: "1012107656015",
-              appId: "1:1012107656015:web:bd14add7ff67359349233a"
-            });
-          }
-          db = firebase.firestore();
-          firebaseReady = true;
-        }catch(e){}
-        resolve();
-      };
-      s2.onerror = function(){ resolve(); };
-      document.head.appendChild(s2);
-    };
-    s1.onerror = function(){ resolve(); };
-    document.head.appendChild(s1);
-  });
+async function sbFetch(path, method, body){
+  try{
+    var res = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
+      method: method || 'GET',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': method === 'POST' ? 'return=representation' : ''
+      },
+      body: body ? JSON.stringify(body) : undefined
+    });
+    var data = await res.json();
+    return {ok: res.ok, data: data};
+  }catch(e){ return {ok:false, data:null}; }
 }
 
 async function fbRegister(email, pass, name){
-  await loadFirebase();
-  if(!db) return {ok:false, msg:'بدون VPN امکان ثبت‌نام وجود ندارد'};
-  try{
-    var banned = await db.collection('banned').doc(email).get();
-    if(banned.exists) return {ok:false, msg:'این ایمیل مسدود شده است'};
-    var existing = await db.collection('users').doc(email).get();
-    if(existing.exists) return {ok:false, msg:'این ایمیل قبلاً ثبت‌نام شده — برو تب ورود'};
-    await db.collection('users').doc(email).set({
-      email: email,
-      pass: pass,
-      name: name || email.split('@')[0],
-      createdAt: new Date().toISOString(),
-      banned: false
-    });
-    return {ok:true};
-  }catch(e){ return {ok:false, msg:'خطا در اتصال: '+e.message}; }
+  // بررسی تکراری نبودن
+  var check = await sbFetch('users?email=eq.'+encodeURIComponent(email)+'&select=email');
+  if(check.ok && check.data && check.data.length > 0) return {ok:false, msg:'این ایمیل قبلاً ثبت‌نام شده'};
+  var res = await sbFetch('users', 'POST', {email:email, pass:pass, name:name||email.split('@')[0], banned:false});
+  if(!res.ok) return {ok:false, msg:'خطا در ذخیره اطلاعات'};
+  return {ok:true};
 }
 
-async function fbLogin(email, pass){
-  await loadFirebase();
-  if(!db) return {ok:false, msg:'بدون VPN امکان ورود وجود ندارد'};
-  try{
-    var banned = await db.collection('banned').doc(email).get();
-    if(banned.exists) return {ok:false, msg:'این ایمیل مسدود شده است'};
-    var doc = await db.collection('users').doc(email).get();
-    if(!doc.exists) return {ok:false, msg:'ایمیل یا رمز اشتباهه'};
-    if(doc.data().pass !== pass) return {ok:false, msg:'ایمیل یا رمز اشتباهه'};
-    if(doc.data().banned) return {ok:false, msg:'این ایمیل مسدود شده است'};
-    return {ok:true, data:doc.data()};
-  }catch(e){ return {ok:false, msg:'خطا در اتصال: '+e.message}; }
+async function checkBanned(email){
+  var res = await sbFetch('users?email=eq.'+encodeURIComponent(email)+'&select=banned');
+  if(res.ok && res.data && res.data.length > 0) return res.data[0].banned;
+  return false;
 }
 </script>
 </head>
@@ -748,13 +713,11 @@ async function doSignup(){
   var msg = document.getElementById('signup-msg');
   if(!email || !pass){ msg.style.color='#c0392b'; msg.textContent='ایمیل و رمز رو کامل وارد کن'; return; }
   if(pass !== pass2){ msg.style.color='#c0392b'; msg.textContent='رمزها یکی نیستن'; return; }
-  var users = getUsers();
-  if(users[email]){ msg.style.color='#c0392b'; msg.textContent='این ایمیل قبلاً ثبت‌نام شده — برو تب ورود'; return; }
-  users[email] = pass;
-  saveUsers(users);
+  msg.style.color='#666'; msg.textContent='⏳ در حال ثبت‌نام...';
+  var res = await fbRegister(email, pass, email.split('@')[0]);
+  if(!res.ok){ msg.style.color='#c0392b'; msg.textContent=res.msg; return; }
+  var users = getUsers(); users[email]=pass; saveUsers(users);
   setCurrentUser(email);
-  // ذخیره‌سازی تو Firebase هم (اگه VPN داشت)
-  fbRegister(email, pass, email.split('@')[0]);
   msg.style.color='green'; msg.textContent='✅ ثبت‌نام شد!';
   setTimeout(()=>goScreen('home'), 700);
 }
@@ -763,26 +726,17 @@ async function doLogin(){
   var email = document.getElementById('login-email').value.trim().toLowerCase();
   var pass = document.getElementById('login-password').value;
   var msg = document.getElementById('login-msg');
-  // ورود به پنل مدیریت
   if(email === ADMIN_EMAIL && pass === 'nikb9098'){
     msg.textContent='';
     openAdmin();
     return;
   }
-  // بررسی مسدود بودن (اگه VPN داشت)
   msg.style.color='#666'; msg.textContent='⏳ در حال بررسی...';
-  try{
-    await loadFirebase();
-    if(db){
-      var banned = await db.collection('banned').doc(email).get();
-      if(banned.exists){ msg.style.color='#c0392b'; msg.textContent='❌ این حساب مسدود شده'; return; }
-    }
-  }catch(e){}
-  // لاگین با localStorage
+  var banned = await checkBanned(email);
+  if(banned){ msg.style.color='#c0392b'; msg.textContent='❌ این حساب مسدود شده'; return; }
   var users = getUsers();
   if(!users[email] || users[email] !== pass){
-    msg.style.color='#c0392b'; msg.textContent='ایمیل یا رمز اشتباهه';
-    return;
+    msg.style.color='#c0392b'; msg.textContent='ایمیل یا رمز اشتباهه'; return;
   }
   setCurrentUser(email);
   msg.style.color='green'; msg.textContent='✅ وارد شدی!';
@@ -800,51 +754,38 @@ function closeAdmin(){
 
 async function loadAdminPanel(){
   var list = document.getElementById('admin-users-list');
-  list.innerHTML = '<p style="color:#666;padding:1rem">⏳ در حال اتصال...</p>';
-  await loadFirebase();
-  if(!db){
-    list.innerHTML='<p style="color:#e67e22;padding:1rem">⚠️ برای دیدن کاربران باید VPN روشن باشه و از سایت اصلی وارد بشی.</p>';
-    return;
+  list.innerHTML = '<p style="color:#666;padding:1rem">⏳ در حال بارگذاری...</p>';
+  var res = await sbFetch('users?select=email,name,banned,created_at&order=created_at.desc');
+  if(!res.ok || !res.data){
+    list.innerHTML='<p style="color:red;padding:1rem">خطا در اتصال</p>'; return;
   }
-  try{
-    var snap = await db.collection('users').get();
-    if(snap.empty){ list.innerHTML='<p style="color:#aaa;padding:1rem">هنوز هیچ کاربری ثبت‌نام نکرده</p>'; return; }
-    list.innerHTML='';
-    snap.forEach(function(d){
-      var u = d.data();
-      var div = document.createElement('div');
-      div.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:0.7rem;border-bottom:1px solid #eee;font-size:13px;gap:0.5rem';
-      var info = document.createElement('div');
-      info.innerHTML='<b>'+u.email+'</b><br><span style="color:'+(u.banned?'#c0392b':'#2e7d32')+'">'+(u.banned?'❌ مسدود':'✅ فعال')+'</span>';
-      var btn = document.createElement('button');
-      btn.style.cssText='padding:0.35rem 0.8rem;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-family:Tahoma,sans-serif;white-space:nowrap';
-      if(u.banned){
-        btn.textContent='رفع مسدودی';
-        btn.style.background='#e8f5e9'; btn.style.color='#2e7d32';
-        btn.onclick=(function(em){ return function(){ toggleBan(em,false,info,btn); }; })(u.email);
-      } else {
-        btn.textContent='مسدود کردن';
-        btn.style.background='#fce8e8'; btn.style.color='#c0392b';
-        btn.onclick=(function(em){ return function(){ toggleBan(em,true,info,btn); }; })(u.email);
-      }
-      div.appendChild(info); div.appendChild(btn);
-      list.appendChild(div);
-    });
-  }catch(e){ list.innerHTML='<p style="color:red;padding:1rem">خطا: '+e.message+'</p>'; }
+  if(res.data.length === 0){ list.innerHTML='<p style="color:#aaa;padding:1rem">هنوز هیچ کاربری ثبت‌نام نکرده</p>'; return; }
+  list.innerHTML='';
+  res.data.forEach(function(u){
+    var div = document.createElement('div');
+    div.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:0.7rem;border-bottom:1px solid #eee;font-size:13px;gap:0.5rem';
+    var info = document.createElement('div');
+    info.innerHTML='<b>'+(u.name||u.email)+'</b><br><span style="font-size:11px;color:#999">'+u.email+'</span><br><span style="color:'+(u.banned?'#c0392b':'#2e7d32')+'">'+(u.banned?'❌ مسدود':'✅ فعال')+'</span>';
+    var btn = document.createElement('button');
+    btn.style.cssText='padding:0.35rem 0.8rem;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-family:Tahoma,sans-serif;white-space:nowrap';
+    if(u.banned){
+      btn.textContent='رفع مسدودی'; btn.style.background='#e8f5e9'; btn.style.color='#2e7d32';
+      btn.onclick=(function(em){ return function(){ toggleBan(em,false,info,btn); }; })(u.email);
+    } else {
+      btn.textContent='مسدود کردن'; btn.style.background='#fce8e8'; btn.style.color='#c0392b';
+      btn.onclick=(function(em){ return function(){ toggleBan(em,true,info,btn); }; })(u.email);
+    }
+    div.appendChild(info); div.appendChild(btn);
+    list.appendChild(div);
+  });
 }
 
 async function toggleBan(email, ban, info, btn){
-  try{
-    await db.collection('users').doc(email).update({banned: ban});
-    if(ban){
-      await db.collection('banned').doc(email).set({email:email, bannedAt: firebase.firestore.FieldValue.serverTimestamp()});
-    } else {
-      await db.collection('banned').doc(email).delete();
-    }
-    info.innerHTML='<b>'+email+'</b><br><span style="color:'+(ban?'#c0392b':'#2e7d32')+'">'+(ban?'❌ مسدود':'✅ فعال')+'</span>';
-    if(ban){ btn.textContent='رفع مسدودی'; btn.style.background='#e8f5e9'; btn.style.color='#2e7d32'; btn.onclick=function(){ toggleBan(email,false,info,btn); }; }
-    else { btn.textContent='مسدود کردن'; btn.style.background='#fce8e8'; btn.style.color='#c0392b'; btn.onclick=function(){ toggleBan(email,true,info,btn); }; }
-  }catch(e){ alert('خطا: '+e.message); }
+  var res = await sbFetch('users?email=eq.'+encodeURIComponent(email), 'PATCH', {banned: ban});
+  if(!res.ok){ alert('خطا در اتصال'); return; }
+  info.innerHTML='<b>'+email+'</b><br><span style="color:'+(ban?'#c0392b':'#2e7d32')+'">'+(ban?'❌ مسدود':'✅ فعال')+'</span>';
+  if(ban){ btn.textContent='رفع مسدودی'; btn.style.background='#e8f5e9'; btn.style.color='#2e7d32'; btn.onclick=function(){ toggleBan(email,false,info,btn); }; }
+  else { btn.textContent='مسدود کردن'; btn.style.background='#fce8e8'; btn.style.color='#c0392b'; btn.onclick=function(){ toggleBan(email,true,info,btn); }; }
 }
 
 function doLogout(){
