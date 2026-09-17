@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="ماشین‌حساب">
-<title>ماشین‌حساب</title>
+<meta name="apple-mobile-web-app-title" content="ماشین‌باز">
+<title>ماشین‌باز</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:Tahoma,sans-serif;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;background:#111;overflow:hidden}
@@ -119,45 +119,10 @@ async function checkBanned(email){
 
 <!-- ===== CALCULATOR (visible by default) ===== -->
 <div id="loading-screen" style="position:fixed;inset:0;background:#1a1a2e;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999">
+  <div style="font-size:60px;margin-bottom:1.5rem">🚙</div>
+  <div style="color:#fff;font-size:20px;font-weight:bold;margin-bottom:1.5rem">ماشین‌باز</div>
   <div style="width:70%;background:#333;border-radius:20px;height:18px;overflow:hidden">
-    <div id="loading-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#2ecc71,#27ae60);border-radius:20px;transition:width 0.05s linear"></div>
-  </div>
-</div>
-<div id="calc-screen" style="display:none">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem">
-    <button id="calc-install-btn" style="background:none;border:none;color:#666;font-size:11px" onclick="installNow()">📲 نصب</button>
-    <button id="calc-help-btn" style="background:none;border:none;color:#666;font-size:11px" onclick="calcHelp()">راهنما</button>
-    <button id="calc-m-btn" style="background:none;border:none;color:#666;font-size:11px" onclick="revealGame()">M</button>
-  </div>
-  <div id="install-status" style="display:none;text-align:center;font-size:11px;color:#888;margin-bottom:0.4rem"></div>
-  <div id="calc-display">0</div>
-  <div class="calc-grid">
-    <button class="calc-btn fn" onclick="calcClearEntry()">C</button>
-    <button class="calc-btn fn" onclick="calcSign()">±</button>
-    <button class="calc-btn fn" onclick="calcPercent()">%</button>
-    <button class="calc-btn op" onclick="calcOp('÷')">÷</button>
-
-    <button class="calc-btn" onclick="calcDigit('7')">7</button>
-    <button class="calc-btn" onclick="calcDigit('8')">8</button>
-    <button class="calc-btn" onclick="calcDigit('9')">9</button>
-    <button class="calc-btn op" onclick="calcOp('×')">×</button>
-
-    <button class="calc-btn" onclick="calcDigit('4')">4</button>
-    <button class="calc-btn" onclick="calcDigit('5')">5</button>
-    <button class="calc-btn" onclick="calcDigit('6')">6</button>
-    <button class="calc-btn op" onclick="calcOp('−')">−</button>
-
-    <button class="calc-btn" onclick="calcDigit('1')">1</button>
-    <button class="calc-btn" onclick="calcDigit('2')">2</button>
-    <button class="calc-btn" onclick="calcDigit('3')">3</button>
-    <button class="calc-btn op" onclick="calcOp('+')">+</button>
-
-    <button class="calc-btn zero" onclick="calcDigit('0')">0</button>
-    <button class="calc-btn" onclick="calcDot()">.</button>
-    <button class="calc-btn op" onclick="calcEquals()">=</button>
-  </div>
-  <div id="calc-ios-help" style="display:none;color:#888;font-size:11px;line-height:1.7;margin-top:0.6rem;text-align:center">
-    برای نصب روی آیفون: تو Safari دکمه‌ی Share (📤) رو بزن، بعد «Add to Home Screen» رو بزن.
+    <div id="loading-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#f39c12,#f1c40f);border-radius:20px;transition:width 0.05s linear"></div>
   </div>
 </div>
 
@@ -192,7 +157,16 @@ async function checkBanned(email){
   <button class="btn primary" style="background:linear-gradient(135deg,#27ae60,#2ecc71)" onclick="goScreen('online')">🌐 بازی آنلاین (تا ۴ نفر)</button>
   <button class="btn" id="setname-btn" onclick="goScreen('setname')">✏️ تنظیم نام</button>
   <button class="btn" onclick="goScreen('carset')">🚗 تنظیم ماشین</button>
-  <button class="btn danger" onclick="lockGame()">B</button>
+  <button class="btn" id="install-btn-home" style="background:linear-gradient(135deg,#f39c12,#f1c40f);color:#fff;border:none" onclick="installWithAnim()">📲 نصب اپ</button>
+  <div id="install-anim" style="display:none;margin-bottom:0.5rem">
+    <div style="background:#333;border-radius:20px;height:16px;overflow:hidden;margin-bottom:0.4rem">
+      <div id="install-anim-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#f39c12,#f1c40f);border-radius:20px;transition:width 0.05s linear"></div>
+    </div>
+    <div id="install-anim-text" style="text-align:center;font-size:13px;color:#f39c12"></div>
+  </div>
+  <div style="background:#111;color:#fff;border-radius:8px;padding:0.8rem 1rem;font-size:12.5px;line-height:1.9;margin-bottom:0.5rem">
+    برای نصب روی آیفون باید تو Safari باشی، دکمه‌ی Share (📤) رو بزنی، بعد «Add to Home Screen» رو بزنی.
+  </div>
 </div>
 
 <!-- AUTH (email + password, stored locally on this device) -->
@@ -587,6 +561,36 @@ function lockGame(){
   try{ localStorage.removeItem('mb_unlocked'); }catch(e){}
 }
 
+function installWithAnim(){
+  if(isRunningStandalone()){ alert('قبلاً نصب شده ✅'); return; }
+  if(deferredInstallPrompt){
+    var anim = document.getElementById('install-anim');
+    var bar = document.getElementById('install-anim-bar');
+    var txt = document.getElementById('install-anim-text');
+    anim.style.display='block';
+    document.getElementById('install-btn-home').style.display='none';
+    txt.textContent='⏳ در حال نصب...';
+    var w=0;
+    var iv=setInterval(function(){ w+=2; bar.style.width=w+'%'; if(w>=100)clearInterval(iv); },30);
+    deferredInstallPrompt.prompt();
+    deferredInstallPrompt.userChoice.then(function(choice){
+      clearInterval(iv); bar.style.width='100%';
+      if(choice.outcome==='accepted'){
+        txt.textContent='✅ نصب شد!';
+        markInstalled();
+        setTimeout(function(){ anim.style.display='none'; document.getElementById('install-btn-home').style.display='block'; },3000);
+      } else {
+        txt.textContent='❌ نصب لغو شد';
+        setTimeout(function(){ anim.style.display='none'; document.getElementById('install-btn-home').style.display='block'; },2000);
+      }
+      deferredInstallPrompt=null;
+    });
+    return;
+  }
+  if(isIOSDevice()){ alert('برای نصب: پایین صفحه دکمه Share (⬆️) رو بزن، بعد «Add to Home Screen» رو بزن'); return; }
+  alert('گوشیت هنوز حاضر برای نصب نیست. از منوی مرورگر (⋮) «Add to Home screen» رو بزن.');
+}
+
 // ===== REAL install-to-home-screen support =====
 var deferredInstallPrompt = null;
 window.addEventListener('beforeinstallprompt', function(e){
@@ -908,10 +912,24 @@ document.addEventListener('DOMContentLoaded', function(){
   var wasUnlocked = false;
   try{ wasUnlocked = localStorage.getItem('mb_unlocked') === '1'; }catch(e){}
 
-  // loading bar animation
+  // بررسی مسدودیت کاربر لاگین‌کرده
+  var cur = null;
+  try{ cur = localStorage.getItem('mb_current_user'); }catch(e){}
+  if(cur){
+    fetch(SUPABASE_URL+'/rest/v1/users?email=eq.'+encodeURIComponent(cur)+'&select=banned',{
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}
+    }).then(r=>r.json()).then(function(data){
+      if(data && data.length > 0 && data[0].banned){
+        try{ localStorage.removeItem('mb_current_user'); }catch(e){}
+        alert('❌ حساب شما مسدود شده است');
+        window.location.reload();
+      }
+    }).catch(function(){});
+  }
+
+  // loading bar animation — goes directly to game
   var bar = document.getElementById('loading-bar');
   var loadingEl = document.getElementById('loading-screen');
-  var calcEl = document.getElementById('calc-screen');
   var w = 0;
   var interval = setInterval(function(){
     w += 2;
@@ -920,11 +938,8 @@ document.addEventListener('DOMContentLoaded', function(){
       clearInterval(interval);
       setTimeout(function(){
         loadingEl.style.display = 'none';
-        if(wasUnlocked){
-          revealGame();
-        } else {
-          calcEl.style.display = 'flex';
-        }
+        document.getElementById('app').style.display = '';
+        goScreen('home');
       }, 200);
     }
   }, 30);
