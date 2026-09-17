@@ -1,11 +1,11 @@
 {
-  "name": "ماشین‌حساب",
-  "short_name": "ماشین‌حساب",
+  "name": "ماشین‌باز",
+  "short_name": "ماشین‌باز",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#000000",
+  "background_color": "#1a1a2e",
+  "theme_color": "#1a1a2e",
   "orientation": "portrait",
   "icons": [
     {
